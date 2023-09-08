@@ -73,7 +73,7 @@ cd tink-cc-2.0.0
 patch -p1 < ${TINK_TCL_DIR}/tink-cc-2.0.0.diff
 mkdir build
 cd build
-export OPENSSL_CUSTOM_ROOT_DIR=/home/phi/openacs/sample-project/tcl_modules
+export OPENSSL_CUSTOM_ROOT_DIR=${PROJECT_INSTALL_DIR}
 cmake .. \
   -DTINK_BUILD_SHARED_LIB=ON \
   -DTINK_USE_INSTALLED_ABSEIL=ON \
