@@ -269,7 +269,7 @@ int Tink_Init(Tcl_Interp *interp) {
 
     tink_InitModule();
 
-    Tcl_CreateNamespace(interp, "::tink", nullptr, nullptr);
+    Tcl_CreateNamespace(interp, "::tink::aead", nullptr, nullptr);
     Tcl_CreateObjCommand(interp, "::tink::aead::encrypt", tink_AeadEncryptCmd, nullptr, nullptr);
     Tcl_CreateObjCommand(interp, "::tink::aead::decrypt", tink_AeadDecryptCmd, nullptr, nullptr);
     Tcl_CreateObjCommand(interp, "::tink::aead::create_keyset", tink_AeadCreateKeysetCmd, nullptr, nullptr);
