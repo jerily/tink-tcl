@@ -16,6 +16,19 @@ export TINK_TCL_DIR=`pwd`
 
 ## Install dependencies
 ```bash
+#boringssl
+#wget -O boringssl.zip https://github.com/google/boringssl/archive/e27ff0e4312c91357778b36bbd8a7ec7bfc67be3.zip
+#unzip boringssl.zip -d .
+#cd boringssl-*
+#mkdir build
+#cd build
+#cmake .. \
+#  -DCMAKE_BUILD_TYPE=Release \
+#  -DBUILD_SHARED_LIBS=ON \
+#  -DCMAKE_INSTALL_PREFIX=${PROJECT_INSTALL_DIR}
+#make
+#make install
+
 #openssl
 wget https://www.openssl.org/source/openssl-1.1.1v.tar.gz
 ./config --prefix=${PROJECT_INSTALL_DIR}
@@ -82,8 +95,34 @@ cmake .. \
   -DTINK_USE_INSTALLED_RAPIDJSON=ON \
   -DCMAKE_SKIP_RPATH=ON \
   -DCMAKE_BUILD_TYPE=Release \
-   -DCMAKE_INSTALL_PREFIX=${PROJECT_INSTALL_DIR}
+  -DCMAKE_INSTALL_PREFIX=${PROJECT_INSTALL_DIR}
 
+make
+make install
+
+# aws-sdk-cpp
+git clone --depth 1 --branch 1.11.157 --recurse-submodules --shallow-submodules https://github.com/aws/aws-sdk-cpp
+cd aws-sdk-cpp
+mkdir build
+cd build
+cmake .. \
+  -DBUILD_SHARED_LIBS=ON \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DBUILD_ONLY="transfer;sts;kms" \
+  -DCMAKE_INSTALL_PREFIX=${PROJECT_INSTALL_DIR}
+cmake --build . --config=Release
+cmake --install . --config=Release
+
+
+# tink-cc-awskms
+wget https://github.com/tink-crypto/tink-cc-awskms/archive/refs/tags/v2.0.1.tar.gz
+tar -xzf v2.0.1.tar.gz
+cd tink-cc-awskms-2.0.1
+patch -p1 < ${TINK_TCL_DIR}/tink-cc-awskms-2.0.1.diff
+mkdir build
+cd build
+cmake .. \
+  -DCMAKE_INSTALL_PREFIX=${PROJECT_INSTALL_DIR}
 make
 make install
 ```

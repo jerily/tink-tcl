@@ -12,7 +12,11 @@
 #include <tink/json_keyset_writer.h>
 #include <tink/cleartext_keyset_handle.h>
 #include <tink/aead/aead_key_templates.h>
+#include <aws/core/Aws.h>
+#include <tink/kms_client.h>
+#include <tink/kms_clients.h>
 #include "library.h"
+#include "awskms/aws_kms_client.h"
 
 #define XSTR(s) STR(s)
 #define STR(s) #s
@@ -37,9 +41,9 @@ using crypto::tink::KeysetHandle;
 using crypto::tink::Aead;
 using crypto::tink::AeadKeyTemplates;
 using google::crypto::tink::KeyTemplate;
+using crypto::tink::integration::awskms::AwsKmsClient;
 
 static int tink_ModuleInitialized;
-
 
 static int tink_AeadEncryptCmd(ClientData  clientData, Tcl_Interp *interp, int objc, Tcl_Obj * const objv[] ) {
     DBG(fprintf(stderr, "AeadEncryptCmd\n"));
@@ -138,9 +142,33 @@ static int tink_AeadDecryptCmd(ClientData  clientData, Tcl_Interp *interp, int o
     return TCL_OK;
 }
 
+// Writes a `keyset` to `output_stream` in JSON format; the keyset is encrypted
+// through a KMS service using the KMS key `master_kms_key_uri`.
+//
+// Prerequisites for this example:
+//  - Register AEAD implementations of Tink.
+//  - Register a KMS client that can use `master_kms_key_uri`.
+//  - Create a keyset and obtain a KeysetHandle to it.
+crypto::tink::util::Status WriteEncryptedKeyset(
+        const crypto::tink::KeysetHandle& keyset,
+        std::unique_ptr<JsonKeysetWriter>& writer,
+        absl::string_view master_kms_key_uri) {
+    // Get a KMS client for the given key URI.
+     absl::StatusOr<std::unique_ptr<AwsKmsClient>> kms_client = AwsKmsClient::New(master_kms_key_uri, "");
+//  absl::StatusOr<const crypto::tink::KmsClient*> kms_client = crypto::tink::KmsClients::Get(master_kms_key_uri);
+    fprintf(stderr, "kms_client %d\n", kms_client.ok());
+    if (!kms_client.ok()) return kms_client.status();
+    // Get an Aead primitive that uses the KMS service to encrypt/decrypt.
+    absl::StatusOr<std::unique_ptr<crypto::tink::Aead>> kms_aead =
+            (*kms_client)->GetAead(master_kms_key_uri);
+    fprintf(stderr, "kms_aead %d\n", kms_aead.ok());
+    if (!kms_aead.ok()) return kms_aead.status();
+    return keyset.Write(writer.get(), **kms_aead);
+}
+
 static int tink_AeadCreateKeysetCmd(ClientData  clientData, Tcl_Interp *interp, int objc, Tcl_Obj * const objv[] ) {
     DBG(fprintf(stderr, "AeadCreateKeysetCmd\n"));
-    CheckArgs(2, 2, 1, "aead_key_template");
+    CheckArgs(2, 3, 1, "aead_key_template ?master_kms_key_uri?");
 
     static const char *aead_key_template_names[] = {
             "Aes128Eax",
@@ -231,20 +259,33 @@ static int tink_AeadCreateKeysetCmd(ClientData  clientData, Tcl_Interp *interp, 
 
     std::stringbuf buffer;
     auto output_stream = absl::make_unique<std::ostream>(&buffer);
+
     absl::StatusOr<std::unique_ptr<JsonKeysetWriter>> keyset_writer = JsonKeysetWriter::New(std::move(output_stream));
     if (!keyset_writer.ok()) {
         Tcl_SetObjResult(interp, Tcl_NewStringObj("Error creating writer", -1));
         return TCL_ERROR;
     }
 
-    absl::Status status = CleartextKeysetHandle::Write((keyset_writer)->get(), **keyset_handle);;
-    if (!status.ok()) {
-        Tcl_SetObjResult(interp, Tcl_NewStringObj("Error writing keyset", -1));
-        return TCL_ERROR;
-    }
+    if (objc == 2) {
+        absl::Status status = CleartextKeysetHandle::Write((keyset_writer)->get(), **keyset_handle);;
+        if (!status.ok()) {
+            Tcl_SetObjResult(interp, Tcl_NewStringObj("Error writing keyset", -1));
+            return TCL_ERROR;
+        }
 
-    Tcl_SetObjResult(interp, Tcl_NewStringObj(buffer.str().c_str(), buffer.str().size()));
-    return TCL_OK;
+        Tcl_SetObjResult(interp, Tcl_NewStringObj(buffer.str().c_str(), buffer.str().size()));
+        return TCL_OK;
+    } else {
+        absl::string_view master_kms_key_uri = Tcl_GetString(objv[2]);
+        absl::Status status = WriteEncryptedKeyset(**keyset_handle, *keyset_writer, master_kms_key_uri);
+        if (!status.ok()) {
+            Tcl_SetObjResult(interp, Tcl_NewStringObj("Error writing encrypted keyset", -1));
+            return TCL_ERROR;
+        }
+
+        Tcl_SetObjResult(interp, Tcl_NewStringObj(buffer.str().c_str(), buffer.str().size()));
+        return TCL_OK;
+    }
 }
 
 static void tink_ExitHandler(ClientData unused) {
@@ -257,6 +298,9 @@ void tink_InitModule() {
         if (!status.ok()) {
             std::cerr << "TinkConfig::Register() failed " << std::endl;
         }
+        Aws::SDKOptions options;
+        Aws::InitAPI(options);
+
         Tcl_CreateThreadExitHandler(tink_ExitHandler, nullptr);
         tink_ModuleInitialized = 1;
     }
