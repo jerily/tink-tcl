@@ -18,6 +18,7 @@
 #define TINK_INTEGRATION_AWSKMS_AWS_KMS_CLIENT_H_
 
 #include <memory>
+#include <tcl.h>
 
 #include "aws/core/auth/AWSCredentialsProvider.h"
 #include "aws/kms/KMSClient.h"
@@ -29,57 +30,57 @@
 #include "tink/util/status.h"
 #include "tink/util/statusor.h"
 
-namespace crypto {
-namespace tink {
-namespace integration {
-namespace awskms {
+
+namespace crypto::tink::integration::awskms {
 
 // AwsKmsClient is an implementation of KmsClient for AWS KMS
 // (https://aws.amazon.com/kms/).
-class AwsKmsClient : public crypto::tink::KmsClient {
- public:
-  // Move only.
-  AwsKmsClient(AwsKmsClient&& other) = default;
-  AwsKmsClient& operator=(AwsKmsClient&& other) = default;
-  AwsKmsClient(const AwsKmsClient&) = delete;
-  AwsKmsClient& operator=(const AwsKmsClient&) = delete;
+    class AwsKmsClient : public crypto::tink::KmsClient {
+    public:
+        // Move only.
+        AwsKmsClient(AwsKmsClient &&other) = default;
 
-  // Creates a new AwsKmsClient that is bound to the key specified in `key_uri`,
-  // if not empty, and that uses the credentials in `credentials_path`, if not
-  // empty, or the default ones to authenticate to the KMS.
-  //
-  // If `key_uri` is empty, then the client is not bound to any particular key.
-  static crypto::tink::util::StatusOr<std::unique_ptr<AwsKmsClient>> New(
-      absl::string_view key_uri, absl::string_view credentials_path);
+        AwsKmsClient &operator=(AwsKmsClient &&other) = default;
 
-  // Creates a new client and registers it in KMSClients.
-  static crypto::tink::util::Status RegisterNewClient(
-      absl::string_view key_uri, absl::string_view credentials_path);
+        AwsKmsClient(const AwsKmsClient &) = delete;
 
-  // Returns true if: (1) `key_uri` is a valid AWS KMS key URI, and (2) the
-  // resulting AWS key ARN is equals to key_arn_, in case this client is bound
-  // to a specific key.
-  bool DoesSupport(absl::string_view key_uri) const override;
+        AwsKmsClient &operator=(const AwsKmsClient &) = delete;
 
-  crypto::tink::util::StatusOr<std::unique_ptr<Aead>> GetAead(
-      absl::string_view key_uri) const override;
+        // Creates a new AwsKmsClient that is bound to the key specified in `key_uri`,
+        // if not empty, and that uses the credentials in `credentials_path`, if not
+        // empty, or the default ones to authenticate to the KMS.
+        //
+        // If `key_uri` is empty, then the client is not bound to any particular key.
+        static crypto::tink::util::StatusOr<std::unique_ptr<AwsKmsClient>> New(
+                Tcl_Interp *interp,
+                absl::string_view key_uri, Tcl_Obj *configDictPtr);
 
- private:
-  AwsKmsClient(absl::string_view key_arn, Aws::Auth::AWSCredentials credentials)
-      : key_arn_(key_arn), credentials_(credentials) {}
-    AwsKmsClient(Aws::Auth::AWSCredentials credentials)
-            : credentials_(credentials) {}
-    AwsKmsClient(absl::string_view key_arn)
-    : key_arn_(key_arn) {}
+        // Creates a new client and registers it in KMSClients.
+        static crypto::tink::util::Status RegisterNewClient(
+                Tcl_Interp *interp,
+                absl::string_view key_uri, Tcl_Obj *dictPtr);
 
-  std::string key_arn_;
-  Aws::Auth::AWSCredentials credentials_;
-  std::shared_ptr<Aws::KMS::KMSClient> aws_client_;
-};
+        // Returns true if: (1) `key_uri` is a valid AWS KMS key URI, and (2) the
+        // resulting AWS key ARN is equals to key_arn_, in case this client is bound
+        // to a specific key.
+        bool DoesSupport(absl::string_view key_uri) const override;
 
-}  // namespace awskms
-}  // namespace integration
-}  // namespace tink
-}  // namespace crypto
+        crypto::tink::util::StatusOr<std::unique_ptr<Aead>> GetAead(
+                absl::string_view key_uri) const override;
+
+    private:
+        AwsKmsClient(Tcl_Interp *interp, absl::string_view key_arn, Tcl_Obj *configDictPtr)
+                : key_arn_(key_arn), interp_(interp), configDictPtr_(configDictPtr) {}
+
+        std::string key_arn_;
+        Tcl_Interp *interp_;
+        Tcl_Obj *configDictPtr_;
+        std::shared_ptr<Aws::KMS::KMSClient> aws_client_;
+    };
+
+} // namespace crypto::tink::integration::awskms
+
+
+
 
 #endif  // TINK_INTEGRATION_AWSKMS_AWS_KMS_CLIENT_H_

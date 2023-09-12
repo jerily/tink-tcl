@@ -150,13 +150,14 @@ static int tink_AeadDecryptCmd(ClientData  clientData, Tcl_Interp *interp, int o
 //  - Register a KMS client that can use `master_kms_key_uri`.
 //  - Create a keyset and obtain a KeysetHandle to it.
 crypto::tink::util::Status WriteEncryptedKeyset(
+        Tcl_Interp *interp,
         const crypto::tink::KeysetHandle& keyset,
         std::unique_ptr<JsonKeysetWriter>& writer,
-        absl::string_view master_kms_key_uri) {
+        absl::string_view master_kms_key_uri,
+        Tcl_Obj *configDictPtr) {
     // Get a KMS client for the given key URI.
-     absl::StatusOr<std::unique_ptr<AwsKmsClient>> kms_client = AwsKmsClient::New(master_kms_key_uri, "");
-//  absl::StatusOr<const crypto::tink::KmsClient*> kms_client = crypto::tink::KmsClients::Get(master_kms_key_uri);
-    fprintf(stderr, "kms_client %d\n", kms_client.ok());
+     absl::StatusOr<std::unique_ptr<AwsKmsClient>> kms_client = AwsKmsClient::New(interp, master_kms_key_uri, configDictPtr);
+    fprintf(stderr, "kms_client %d %s\n", kms_client.ok(), kms_client.status().message().data());
     if (!kms_client.ok()) return kms_client.status();
     // Get an Aead primitive that uses the KMS service to encrypt/decrypt.
     absl::StatusOr<std::unique_ptr<crypto::tink::Aead>> kms_aead =
@@ -168,7 +169,7 @@ crypto::tink::util::Status WriteEncryptedKeyset(
 
 static int tink_AeadCreateKeysetCmd(ClientData  clientData, Tcl_Interp *interp, int objc, Tcl_Obj * const objv[] ) {
     DBG(fprintf(stderr, "AeadCreateKeysetCmd\n"));
-    CheckArgs(2, 3, 1, "aead_key_template ?master_kms_key_uri?");
+    CheckArgs(2, 4, 1, "aead_key_template ?master_kms_key_uri? ?kms_client_config_dict?");
 
     static const char *aead_key_template_names[] = {
             "Aes128Eax",
@@ -277,7 +278,7 @@ static int tink_AeadCreateKeysetCmd(ClientData  clientData, Tcl_Interp *interp, 
         return TCL_OK;
     } else {
         absl::string_view master_kms_key_uri = Tcl_GetString(objv[2]);
-        absl::Status status = WriteEncryptedKeyset(**keyset_handle, *keyset_writer, master_kms_key_uri);
+        absl::Status status = WriteEncryptedKeyset(interp, **keyset_handle, *keyset_writer, master_kms_key_uri, objc == 4 ? objv[3] : nullptr);
         if (!status.ok()) {
             Tcl_SetObjResult(interp, Tcl_NewStringObj("Error writing encrypted keyset", -1));
             return TCL_ERROR;
