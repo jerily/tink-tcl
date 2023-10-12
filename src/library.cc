@@ -29,6 +29,11 @@
                      return TCL_ERROR; \
                  }
 
+#define SetResult(str) Tcl_ResetResult(interp); \
+                     Tcl_SetStringObj(Tcl_GetObjResult(interp), (str), -1)
+
+#define CMD_KEYSET_NAME(s, internal) sprintf((s), "_TINK_KS_%p", (internal))
+
 using crypto::tink::TinkConfig;
 using crypto::tink::JsonKeysetReader;
 using crypto::tink::JsonKeysetWriter;
@@ -39,6 +44,95 @@ using crypto::tink::AeadKeyTemplates;
 using google::crypto::tink::KeyTemplate;
 
 static int tink_ModuleInitialized;
+
+static Tcl_HashTable tink_KeysetNameToInternal_HT;
+static Tcl_Mutex tink_KeysetNameToInternal_HT_Mutex;
+
+typedef struct {
+    std::unique_ptr<KeysetHandle> keyset_handle;
+} tink_keyset_t;
+
+int tink_RegisterKeysetName(const char *name, tink_keyset_t *internal) {
+
+    Tcl_HashEntry *entryPtr;
+    int newEntry;
+    Tcl_MutexLock(&tink_KeysetNameToInternal_HT_Mutex);
+    entryPtr = Tcl_CreateHashEntry(&tink_KeysetNameToInternal_HT, (char *) name, &newEntry);
+    if (newEntry) {
+        Tcl_SetHashValue(entryPtr, (ClientData) internal);
+    }
+    Tcl_MutexUnlock(&tink_KeysetNameToInternal_HT_Mutex);
+
+    DBG(fprintf(stderr, "--> RegisterKeysetName: name=%s internal=%p %s\n", name, internal,
+                newEntry ? "entered into" : "already in"));
+
+    return newEntry;
+}
+
+int tink_UnregisterKeysetName(const char *name) {
+
+    Tcl_HashEntry *entryPtr;
+
+    Tcl_MutexLock(&tink_KeysetNameToInternal_HT_Mutex);
+    entryPtr = Tcl_FindHashEntry(&tink_KeysetNameToInternal_HT, (char *) name);
+    if (entryPtr != NULL) {
+        Tcl_DeleteHashEntry(entryPtr);
+    }
+    Tcl_MutexUnlock(&tink_KeysetNameToInternal_HT_Mutex);
+
+    DBG(fprintf(stderr, "--> UnregisterKeysetName: name=%s entryPtr=%p\n", name, entryPtr));
+
+    return entryPtr != NULL;
+}
+
+tink_keyset_t * tink_GetInternalFromKeysetName(const char *name) {
+    tink_keyset_t *internal = NULL;
+    Tcl_HashEntry *entryPtr;
+
+    Tcl_MutexLock(&tink_KeysetNameToInternal_HT_Mutex);
+    entryPtr = Tcl_FindHashEntry(&tink_KeysetNameToInternal_HT, (char *) name);
+    if (entryPtr != NULL) {
+        internal = (tink_keyset_t *) Tcl_GetHashValue(entryPtr);
+    }
+    Tcl_MutexUnlock(&tink_KeysetNameToInternal_HT_Mutex);
+
+    return internal;
+}
+
+
+
+static int tink_RegisterKeysetCmd(ClientData  clientData, Tcl_Interp *interp, int objc, Tcl_Obj * const objv[] ) {
+    DBG(fprintf(stderr, "RegisterKeysetCmd\n"));
+    CheckArgs(2, 2, 1, "keyset");
+
+    absl::string_view keyset = Tcl_GetString(objv[1]);
+    auto reader_result = JsonKeysetReader::New(keyset);
+    if (!reader_result.ok()) {
+        Tcl_SetObjResult(interp, Tcl_NewStringObj("Error reading keyset", -1));
+        return TCL_ERROR;
+    }
+
+    auto keyset_ptr = (tink_keyset_t *) Tcl_Alloc(sizeof(tink_keyset_t));
+    char keyset_name[40];
+    CMD_KEYSET_NAME(keyset_name, reader_result.value().get());
+    tink_RegisterKeysetName(keyset_name, keyset_ptr);
+
+    SetResult(keyset_name);
+    return TCL_OK;
+}
+
+static int tink_UnregisterKeysetCmd(ClientData  clientData, Tcl_Interp *interp, int objc, Tcl_Obj * const objv[] ) {
+    DBG(fprintf(stderr, "UnregisterKeysetCmd\n"));
+    CheckArgs(2, 2, 1, "keyset_handle");
+    auto keyset_handle = Tcl_GetString(objv[1]);
+    auto keyset_ptr = tink_GetInternalFromKeysetName(keyset_handle);
+    if (keyset_ptr == nullptr) {
+        Tcl_SetObjResult(interp, Tcl_NewStringObj("keyset handle not found", -1));
+        return TCL_ERROR;
+    }
+    tink_UnregisterKeysetName(keyset_handle);
+    return TCL_OK;
+}
 
 static int tink_AeadEncryptCmd(ClientData  clientData, Tcl_Interp *interp, int objc, Tcl_Obj * const objv[] ) {
     DBG(fprintf(stderr, "AeadEncryptCmd\n"));
@@ -269,6 +363,8 @@ int Tink_Init(Tcl_Interp *interp) {
     Tcl_CreateObjCommand(interp, "::tink::aead::encrypt", tink_AeadEncryptCmd, nullptr, nullptr);
     Tcl_CreateObjCommand(interp, "::tink::aead::decrypt", tink_AeadDecryptCmd, nullptr, nullptr);
     Tcl_CreateObjCommand(interp, "::tink::aead::create_keyset", tink_AeadCreateKeysetCmd, nullptr, nullptr);
+    Tcl_CreateObjCommand(interp, "::tink::register_keyset", tink_RegisterKeysetCmd, nullptr, nullptr);
+    Tcl_CreateObjCommand(interp, "::tink::unregister_keyset", tink_UnregisterKeysetCmd, nullptr, nullptr);
 
     return Tcl_PkgProvide(interp, "tink", XSTR(PROJECT_VERSION));
 }
