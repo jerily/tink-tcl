@@ -13,6 +13,7 @@
 #include <tink/cleartext_keyset_handle.h>
 #include <tink/aead/aead_key_templates.h>
 #include <tink/mac.h>
+#include <tink/mac/mac_key_templates.h>
 #include "library.h"
 
 #define XSTR(s) STR(s)
@@ -40,10 +41,11 @@ using crypto::tink::JsonKeysetReader;
 using crypto::tink::JsonKeysetWriter;
 using crypto::tink::CleartextKeysetHandle;
 using crypto::tink::KeysetHandle;
+using google::crypto::tink::KeyTemplate;
 using crypto::tink::Aead;
 using crypto::tink::AeadKeyTemplates;
-using google::crypto::tink::KeyTemplate;
 using crypto::tink::Mac;
+using crypto::tink::MacKeyTemplates;
 
 static int tink_ModuleInitialized;
 
@@ -451,6 +453,82 @@ static int tink_MacVerifyCmd(ClientData clientData, Tcl_Interp *interp, int objc
     return TCL_OK;
 }
 
+static int tink_MacCreateKeysetCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]) {
+    DBG(fprintf(stderr, "MacCreateKeysetCmd\n"));
+    CheckArgs(2, 2, 1, "mac_key_template");
+
+    static const char *mac_key_template_names[] = {
+            "HmacSha256HalfSizeTag",
+            "HmacSha256",
+            "HmacSha512HalfSizeTag",
+            "HmacSha512",
+            "AesCmac",
+            nullptr
+    };
+
+    enum mac_key_templates {
+        HmacSha256HalfSizeTag,
+        HmacSha256,
+        HmacSha512HalfSizeTag,
+        HmacSha512,
+        AesCmac
+    };
+
+    int key_template_index;
+    if (TCL_OK !=
+        Tcl_GetIndexFromObj(interp, objv[1], mac_key_template_names, "mac key template", 0, &key_template_index)) {
+        Tcl_SetObjResult(interp, Tcl_NewStringObj("Unknown mac key template", -1));
+        return TCL_ERROR;
+    }
+
+    KeyTemplate key_template;
+    switch ((enum mac_key_templates) key_template_index) {
+        case HmacSha256HalfSizeTag:
+            key_template = MacKeyTemplates::HmacSha256HalfSizeTag();
+            break;
+        case HmacSha256:
+            key_template = MacKeyTemplates::HmacSha256();
+            break;
+        case HmacSha512HalfSizeTag:
+            key_template = MacKeyTemplates::HmacSha512HalfSizeTag();
+            break;
+        case HmacSha512:
+            key_template = MacKeyTemplates::HmacSha512();
+            break;
+        case AesCmac:
+            key_template = MacKeyTemplates::AesCmac();
+            break;
+        default:
+            Tcl_SetObjResult(interp, Tcl_NewStringObj("Unknown mac key template", -1));
+            return TCL_ERROR;
+    }
+
+    // This will generate a new keyset with only *one* key and return a keyset handle to it.
+    absl::StatusOr<std::unique_ptr<KeysetHandle>> keyset_handle = KeysetHandle::GenerateNew(key_template);
+    if (!keyset_handle.ok()) {
+        Tcl_SetObjResult(interp, Tcl_NewStringObj("Error generating keyset", -1));
+        return TCL_ERROR;
+    }
+
+    std::stringbuf buffer;
+    auto output_stream = absl::make_unique<std::ostream>(&buffer);
+
+    absl::StatusOr<std::unique_ptr<JsonKeysetWriter>> keyset_writer = JsonKeysetWriter::New(std::move(output_stream));
+    if (!keyset_writer.ok()) {
+        Tcl_SetObjResult(interp, Tcl_NewStringObj("Error creating writer", -1));
+        return TCL_ERROR;
+    }
+
+    absl::Status status = CleartextKeysetHandle::Write((keyset_writer)->get(), **keyset_handle);;
+    if (!status.ok()) {
+        Tcl_SetObjResult(interp, Tcl_NewStringObj("Error writing keyset", -1));
+        return TCL_ERROR;
+    }
+
+    Tcl_SetObjResult(interp, Tcl_NewStringObj(buffer.str().c_str(), buffer.str().size()));
+    return TCL_OK;
+}
+
 static void tink_ExitHandler(ClientData unused) {
     Tcl_MutexLock(&tink_KeysetNameToInternal_HT_Mutex);
     Tcl_DeleteHashTable(&tink_KeysetNameToInternal_HT);
@@ -493,6 +571,7 @@ int Tink_Init(Tcl_Interp *interp) {
     Tcl_CreateNamespace(interp, "::tink::mac", nullptr, nullptr);
     Tcl_CreateObjCommand(interp, "::tink::mac::compute", tink_MacComputeCmd, nullptr, nullptr);
     Tcl_CreateObjCommand(interp, "::tink::mac::verify", tink_MacVerifyCmd, nullptr, nullptr);
+    Tcl_CreateObjCommand(interp, "::tink::mac::create_keyset", tink_MacCreateKeysetCmd, nullptr, nullptr);
 
     return Tcl_PkgProvide(interp, "tink", XSTR(PROJECT_VERSION));
 }
