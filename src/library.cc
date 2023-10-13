@@ -49,7 +49,7 @@ static Tcl_HashTable tink_KeysetNameToInternal_HT;
 static Tcl_Mutex tink_KeysetNameToInternal_HT_Mutex;
 
 typedef struct {
-    std::unique_ptr<KeysetHandle> keyset_handle;
+    KeysetHandle *keyset_handle;
 } tink_keyset_t;
 
 int tink_RegisterKeysetName(const char *name, tink_keyset_t *internal) {
@@ -112,9 +112,21 @@ static int tink_RegisterKeysetCmd(ClientData  clientData, Tcl_Interp *interp, in
         return TCL_ERROR;
     }
 
+    absl::StatusOr<std::unique_ptr<KeysetHandle>> keyset_handle = CleartextKeysetHandle::Read(*std::move(reader_result));
+    if (!keyset_handle.ok()) {
+        Tcl_SetObjResult(interp, Tcl_NewStringObj("Error reading keyset_handle", -1));
+        return TCL_ERROR;
+    }
+
     auto keyset_ptr = (tink_keyset_t *) Tcl_Alloc(sizeof(tink_keyset_t));
+    if (keyset_ptr == nullptr) {
+        Tcl_SetObjResult(interp, Tcl_NewStringObj("Error allocating memory", -1));
+        return TCL_ERROR;
+    }
+    keyset_ptr->keyset_handle = (*keyset_handle).release();
     char keyset_name[40];
-    CMD_KEYSET_NAME(keyset_name, reader_result.value().get());
+    CMD_KEYSET_NAME(keyset_name, keyset_ptr->keyset_handle);
+    fprintf(stderr, "keyset_name=%s\n", keyset_name);
     tink_RegisterKeysetName(keyset_name, keyset_ptr);
 
     SetResult(keyset_name);
@@ -124,35 +136,51 @@ static int tink_RegisterKeysetCmd(ClientData  clientData, Tcl_Interp *interp, in
 static int tink_UnregisterKeysetCmd(ClientData  clientData, Tcl_Interp *interp, int objc, Tcl_Obj * const objv[] ) {
     DBG(fprintf(stderr, "UnregisterKeysetCmd\n"));
     CheckArgs(2, 2, 1, "keyset_handle");
-    auto keyset_handle = Tcl_GetString(objv[1]);
-    auto keyset_ptr = tink_GetInternalFromKeysetName(keyset_handle);
+    auto keyset_name = Tcl_GetString(objv[1]);
+    auto keyset_ptr = tink_GetInternalFromKeysetName(keyset_name);
     if (keyset_ptr == nullptr) {
         Tcl_SetObjResult(interp, Tcl_NewStringObj("keyset handle not found", -1));
         return TCL_ERROR;
     }
-    tink_UnregisterKeysetName(keyset_handle);
+    tink_UnregisterKeysetName(keyset_name);
+    delete keyset_ptr->keyset_handle;
+    Tcl_Free((char *) keyset_ptr);
     return TCL_OK;
 }
 
 static int tink_AeadEncryptCmd(ClientData  clientData, Tcl_Interp *interp, int objc, Tcl_Obj * const objv[] ) {
     DBG(fprintf(stderr, "AeadEncryptCmd\n"));
-    CheckArgs(3, 4, 1, "keyset plaintext ?associated_data?");
+    CheckArgs(3, 4, 1, "keyset_handle plaintext ?associated_data?");
 
-    absl::string_view keyset = Tcl_GetString(objv[1]);
-    auto reader_result = JsonKeysetReader::New(keyset);
-    if (!reader_result.ok()) {
-        Tcl_SetObjResult(interp, Tcl_NewStringObj("Error reading keyset", -1));
+//    absl::string_view keyset = Tcl_GetString(objv[1]);
+//    auto reader_result = JsonKeysetReader::New(keyset);
+//    if (!reader_result.ok()) {
+//        Tcl_SetObjResult(interp, Tcl_NewStringObj("Error reading keyset", -1));
+//        return TCL_ERROR;
+//    }
+//    absl::StatusOr<std::unique_ptr<KeysetHandle>> keyset_handle = CleartextKeysetHandle::Read(*std::move(reader_result));
+//    if (!keyset_handle.ok()) {
+//        Tcl_SetObjResult(interp, Tcl_NewStringObj("Error reading keyset_handle", -1));
+//        return TCL_ERROR;
+//    }
+
+    auto keyset_name = Tcl_GetString(objv[1]);
+    auto keyset_ptr = tink_GetInternalFromKeysetName(keyset_name);
+    if (keyset_ptr == nullptr) {
+        Tcl_SetObjResult(interp, Tcl_NewStringObj("keyset handle not found", -1));
         return TCL_ERROR;
     }
 
-    absl::StatusOr<std::unique_ptr<KeysetHandle>> keyset_handle = CleartextKeysetHandle::Read(*std::move(reader_result));
-    if (!keyset_handle.ok()) {
-        Tcl_SetObjResult(interp, Tcl_NewStringObj("Error reading keyset_handle", -1));
+    auto keyset_handle = keyset_ptr->keyset_handle;
+
+    auto valid = keyset_handle->Validate();
+    if (!valid.ok()) {
+        SetResult("error validating keyset");
         return TCL_ERROR;
     }
 
     // Get the primitive.
-    absl::StatusOr<std::unique_ptr<Aead>> aead = (*keyset_handle)->GetPrimitive<Aead>();
+    absl::StatusOr<std::unique_ptr<Aead>> aead = keyset_handle->GetPrimitive<Aead>();
     if (!aead.ok()) {
         Tcl_SetObjResult(interp, Tcl_NewStringObj("Error getting primitive", -1));
         return TCL_ERROR;
@@ -182,26 +210,35 @@ static int tink_AeadDecryptCmd(ClientData  clientData, Tcl_Interp *interp, int o
     DBG(fprintf(stderr, "AeadDecryptCmd\n"));
     CheckArgs(3, 4, 1, "keyset ciphertext ?associated_data?");
 
-    absl::string_view keyset = Tcl_GetString(objv[1]);
-    auto reader_result = JsonKeysetReader::New(keyset);
-    if (!reader_result.ok()) {
-        Tcl_SetObjResult(interp, Tcl_NewStringObj("Error reading keyset", -1));
+//    absl::string_view keyset = Tcl_GetString(objv[1]);
+//    auto reader_result = JsonKeysetReader::New(keyset);
+//    if (!reader_result.ok()) {
+//        Tcl_SetObjResult(interp, Tcl_NewStringObj("Error reading keyset", -1));
+//        return TCL_ERROR;
+//    }
+//
+//    absl::StatusOr<std::unique_ptr<KeysetHandle>> keyset_handle = CleartextKeysetHandle::Read(*std::move(reader_result));
+//    if (!keyset_handle.ok()) {
+//        Tcl_SetObjResult(interp, Tcl_NewStringObj("Error reading keyset_handle", -1));
+//        return TCL_ERROR;
+//    }
+//    if (!keyset_handle.ok()) {
+//        Tcl_SetObjResult(interp, Tcl_NewStringObj("Error reading keyset_handle", -1));
+//        return TCL_ERROR;
+//    }
+
+
+    auto keyset_name = Tcl_GetString(objv[1]);
+    auto keyset_ptr = tink_GetInternalFromKeysetName(keyset_name);
+    if (keyset_ptr == nullptr) {
+        Tcl_SetObjResult(interp, Tcl_NewStringObj("keyset handle not found", -1));
         return TCL_ERROR;
     }
 
-    absl::StatusOr<std::unique_ptr<KeysetHandle>> keyset_handle = CleartextKeysetHandle::Read(*std::move(reader_result));
-    if (!keyset_handle.ok()) {
-        Tcl_SetObjResult(interp, Tcl_NewStringObj("Error reading keyset_handle", -1));
-        return TCL_ERROR;
-    }
-
-    if (!keyset_handle.ok()) {
-        Tcl_SetObjResult(interp, Tcl_NewStringObj("Error reading keyset_handle", -1));
-        return TCL_ERROR;
-    }
+    auto keyset_handle = keyset_ptr->keyset_handle;
 
     // Get the primitive.
-    absl::StatusOr<std::unique_ptr<Aead>> aead = (*keyset_handle)->GetPrimitive<Aead>();
+    absl::StatusOr<std::unique_ptr<Aead>> aead = keyset_handle->GetPrimitive<Aead>();
     if (!aead.ok()) {
         Tcl_SetObjResult(interp, Tcl_NewStringObj("Error getting primitive", -1));
         return TCL_ERROR;
@@ -337,8 +374,10 @@ static int tink_AeadCreateKeysetCmd(ClientData  clientData, Tcl_Interp *interp, 
 }
 
 static void tink_ExitHandler(ClientData unused) {
+    Tcl_MutexLock(&tink_KeysetNameToInternal_HT_Mutex);
+    Tcl_DeleteHashTable(&tink_KeysetNameToInternal_HT);
+    Tcl_MutexUnlock(&tink_KeysetNameToInternal_HT_Mutex);
 }
-
 
 void tink_InitModule() {
     if (!tink_ModuleInitialized) {
@@ -346,6 +385,10 @@ void tink_InitModule() {
         if (!status.ok()) {
             std::cerr << "TinkConfig::Register() failed " << std::endl;
         }
+
+        Tcl_MutexLock(&tink_KeysetNameToInternal_HT_Mutex);
+        Tcl_InitHashTable(&tink_KeysetNameToInternal_HT, TCL_STRING_KEYS);
+        Tcl_MutexUnlock(&tink_KeysetNameToInternal_HT_Mutex);
 
         Tcl_CreateThreadExitHandler(tink_ExitHandler, nullptr);
         tink_ModuleInitialized = 1;
