@@ -12,6 +12,7 @@
 #include <tink/json_keyset_writer.h>
 #include <tink/cleartext_keyset_handle.h>
 #include <tink/aead/aead_key_templates.h>
+#include <tink/mac.h>
 #include "library.h"
 
 #define XSTR(s) STR(s)
@@ -42,6 +43,7 @@ using crypto::tink::KeysetHandle;
 using crypto::tink::Aead;
 using crypto::tink::AeadKeyTemplates;
 using google::crypto::tink::KeyTemplate;
+using crypto::tink::Mac;
 
 static int tink_ModuleInitialized;
 
@@ -85,7 +87,7 @@ int tink_UnregisterKeysetName(const char *name) {
     return entryPtr != NULL;
 }
 
-tink_keyset_t * tink_GetInternalFromKeysetName(const char *name) {
+tink_keyset_t *tink_GetInternalFromKeysetName(const char *name) {
     tink_keyset_t *internal = NULL;
     Tcl_HashEntry *entryPtr;
 
@@ -100,8 +102,7 @@ tink_keyset_t * tink_GetInternalFromKeysetName(const char *name) {
 }
 
 
-
-static int tink_RegisterKeysetCmd(ClientData  clientData, Tcl_Interp *interp, int objc, Tcl_Obj * const objv[] ) {
+static int tink_RegisterKeysetCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]) {
     DBG(fprintf(stderr, "RegisterKeysetCmd\n"));
     CheckArgs(2, 2, 1, "keyset");
 
@@ -112,7 +113,8 @@ static int tink_RegisterKeysetCmd(ClientData  clientData, Tcl_Interp *interp, in
         return TCL_ERROR;
     }
 
-    absl::StatusOr<std::unique_ptr<KeysetHandle>> keyset_handle = CleartextKeysetHandle::Read(*std::move(reader_result));
+    absl::StatusOr<std::unique_ptr<KeysetHandle>> keyset_handle = CleartextKeysetHandle::Read(
+            *std::move(reader_result));
     if (!keyset_handle.ok()) {
         Tcl_SetObjResult(interp, Tcl_NewStringObj("Error reading keyset_handle", -1));
         return TCL_ERROR;
@@ -133,7 +135,7 @@ static int tink_RegisterKeysetCmd(ClientData  clientData, Tcl_Interp *interp, in
     return TCL_OK;
 }
 
-static int tink_UnregisterKeysetCmd(ClientData  clientData, Tcl_Interp *interp, int objc, Tcl_Obj * const objv[] ) {
+static int tink_UnregisterKeysetCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]) {
     DBG(fprintf(stderr, "UnregisterKeysetCmd\n"));
     CheckArgs(2, 2, 1, "keyset_handle");
     auto keyset_name = Tcl_GetString(objv[1]);
@@ -148,21 +150,9 @@ static int tink_UnregisterKeysetCmd(ClientData  clientData, Tcl_Interp *interp, 
     return TCL_OK;
 }
 
-static int tink_AeadEncryptCmd(ClientData  clientData, Tcl_Interp *interp, int objc, Tcl_Obj * const objv[] ) {
+static int tink_AeadEncryptCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]) {
     DBG(fprintf(stderr, "AeadEncryptCmd\n"));
     CheckArgs(3, 4, 1, "keyset_handle plaintext ?associated_data?");
-
-//    absl::string_view keyset = Tcl_GetString(objv[1]);
-//    auto reader_result = JsonKeysetReader::New(keyset);
-//    if (!reader_result.ok()) {
-//        Tcl_SetObjResult(interp, Tcl_NewStringObj("Error reading keyset", -1));
-//        return TCL_ERROR;
-//    }
-//    absl::StatusOr<std::unique_ptr<KeysetHandle>> keyset_handle = CleartextKeysetHandle::Read(*std::move(reader_result));
-//    if (!keyset_handle.ok()) {
-//        Tcl_SetObjResult(interp, Tcl_NewStringObj("Error reading keyset_handle", -1));
-//        return TCL_ERROR;
-//    }
 
     auto keyset_name = Tcl_GetString(objv[1]);
     auto keyset_ptr = tink_GetInternalFromKeysetName(keyset_name);
@@ -192,7 +182,8 @@ static int tink_AeadEncryptCmd(ClientData  clientData, Tcl_Interp *interp, int o
 
     int associated_data_length;
     auto associated_data = (objc == 4) ? Tcl_GetByteArrayFromObj(objv[3], &associated_data_length) : nullptr;
-    absl::string_view associated_data_str = (objc == 4) ? absl::string_view((const char *) associated_data, associated_data_length) : "";
+    absl::string_view associated_data_str = (objc == 4) ? absl::string_view((const char *) associated_data,
+                                                                            associated_data_length) : "";
 
     absl::StatusOr<std::string> encrypt_result =
             (*aead)->Encrypt(*plaintext_str, associated_data_str);
@@ -202,11 +193,12 @@ static int tink_AeadEncryptCmd(ClientData  clientData, Tcl_Interp *interp, int o
         return TCL_ERROR;
     }
 
-    Tcl_SetObjResult(interp, Tcl_NewByteArrayObj((const unsigned char *) encrypt_result.value().data(), encrypt_result.value().size()));
+    Tcl_SetObjResult(interp, Tcl_NewByteArrayObj((const unsigned char *) encrypt_result.value().data(),
+                                                 encrypt_result.value().size()));
     return TCL_OK;
 }
 
-static int tink_AeadDecryptCmd(ClientData  clientData, Tcl_Interp *interp, int objc, Tcl_Obj * const objv[] ) {
+static int tink_AeadDecryptCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]) {
     DBG(fprintf(stderr, "AeadDecryptCmd\n"));
     CheckArgs(3, 4, 1, "keyset ciphertext ?associated_data?");
 
@@ -250,7 +242,8 @@ static int tink_AeadDecryptCmd(ClientData  clientData, Tcl_Interp *interp, int o
 
     int associated_data_length;
     auto associated_data = (objc == 4) ? Tcl_GetByteArrayFromObj(objv[3], &associated_data_length) : nullptr;
-    absl::string_view associated_data_str = (objc == 4) ? absl::string_view((const char *) associated_data, associated_data_length) : "";
+    absl::string_view associated_data_str = (objc == 4) ? absl::string_view((const char *) associated_data,
+                                                                            associated_data_length) : "";
     absl::StatusOr<std::string> decrypt_result =
             (*aead)->Decrypt(*ciphertext_str, associated_data_str);
 
@@ -259,11 +252,12 @@ static int tink_AeadDecryptCmd(ClientData  clientData, Tcl_Interp *interp, int o
         return TCL_ERROR;
     }
 
-    Tcl_SetObjResult(interp, Tcl_NewByteArrayObj((const unsigned char *) decrypt_result.value().data(), decrypt_result.value().size()));
+    Tcl_SetObjResult(interp, Tcl_NewByteArrayObj((const unsigned char *) decrypt_result.value().data(),
+                                                 decrypt_result.value().size()));
     return TCL_OK;
 }
 
-static int tink_AeadCreateKeysetCmd(ClientData  clientData, Tcl_Interp *interp, int objc, Tcl_Obj * const objv[] ) {
+static int tink_AeadCreateKeysetCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]) {
     DBG(fprintf(stderr, "AeadCreateKeysetCmd\n"));
     CheckArgs(2, 2, 1, "aead_key_template");
 
@@ -299,7 +293,8 @@ static int tink_AeadCreateKeysetCmd(ClientData  clientData, Tcl_Interp *interp, 
     };
 
     int key_template_index;
-    if (TCL_OK != Tcl_GetIndexFromObj(interp, objv[1], aead_key_template_names, "aead key template", 0, &key_template_index)) {
+    if (TCL_OK !=
+        Tcl_GetIndexFromObj(interp, objv[1], aead_key_template_names, "aead key template", 0, &key_template_index)) {
         Tcl_SetObjResult(interp, Tcl_NewStringObj("Unknown aead key template", -1));
         return TCL_ERROR;
     }
@@ -373,6 +368,89 @@ static int tink_AeadCreateKeysetCmd(ClientData  clientData, Tcl_Interp *interp, 
     return TCL_OK;
 }
 
+static int tink_MacComputeCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]) {
+    DBG(fprintf(stderr, "MacComputeCmd\n"));
+    CheckArgs(3, 3, 1, "keyset_handle content");
+
+    auto keyset_name = Tcl_GetString(objv[1]);
+    auto keyset_ptr = tink_GetInternalFromKeysetName(keyset_name);
+    if (keyset_ptr == nullptr) {
+        Tcl_SetObjResult(interp, Tcl_NewStringObj("keyset handle not found", -1));
+        return TCL_ERROR;
+    }
+
+    auto keyset_handle = keyset_ptr->keyset_handle;
+
+    auto valid = keyset_handle->Validate();
+    if (!valid.ok()) {
+        SetResult("error validating keyset");
+        return TCL_ERROR;
+    }
+
+    // Get the primitive.
+    absl::StatusOr<std::unique_ptr<Mac>> mac_primitive = keyset_handle->GetPrimitive<Mac>();
+    if (!mac_primitive.ok()) {
+        SetResult("error getting primitive");
+        return TCL_ERROR;
+    }
+
+    int content_length;
+    const unsigned char *content = Tcl_GetByteArrayFromObj(objv[2], &content_length);
+    std::string content_str = std::string((const char *) content, content_length);
+    absl::StatusOr<std::string> compute_result = (*mac_primitive)->ComputeMac(content_str);
+    if (!compute_result.ok()) {
+        SetResult("error computing mac");
+        return TCL_ERROR;
+    }
+
+    // return the authentication tag
+    Tcl_SetObjResult(interp, Tcl_NewByteArrayObj((const unsigned char *) compute_result.value().data(),
+                                                 compute_result.value().size()));
+    return TCL_OK;
+}
+
+static int tink_MacVerifyCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]) {
+    DBG(fprintf(stderr, "MacVerifyCmd\n"));
+    CheckArgs(4, 4, 1, "keyset_handle tag content");
+
+    auto keyset_name = Tcl_GetString(objv[1]);
+    auto keyset_ptr = tink_GetInternalFromKeysetName(keyset_name);
+    if (keyset_ptr == nullptr) {
+        Tcl_SetObjResult(interp, Tcl_NewStringObj("keyset handle not found", -1));
+        return TCL_ERROR;
+    }
+
+    auto keyset_handle = keyset_ptr->keyset_handle;
+
+    auto valid = keyset_handle->Validate();
+    if (!valid.ok()) {
+        SetResult("error validating keyset");
+        return TCL_ERROR;
+    }
+
+    // Get the primitive.
+    absl::StatusOr<std::unique_ptr<Mac>> mac_primitive = keyset_handle->GetPrimitive<Mac>();
+    if (!mac_primitive.ok()) {
+        SetResult("error getting primitive");
+        return TCL_ERROR;
+    }
+
+    int tag_length;
+    const unsigned char *tag = Tcl_GetByteArrayFromObj(objv[2], &tag_length);
+    std::string tag_str = std::string((const char *) tag, tag_length);
+
+    int content_length;
+    const unsigned char *content = Tcl_GetByteArrayFromObj(objv[3], &content_length);
+    std::string content_str = std::string((const char *) content, content_length);
+
+    // Verifies if 'mac' is a correct authentication code (MAC) for 'data'.
+    // Returns Status::OK if 'mac' is correct, and a non-OK-Status otherwise.
+    absl::Status verify_result = (*mac_primitive)->VerifyMac(tag_str, content_str);
+
+    Tcl_SetObjResult(interp, Tcl_NewBooleanObj(verify_result.ok()));
+    return TCL_OK;
+}
+
 static void tink_ExitHandler(ClientData unused) {
     Tcl_MutexLock(&tink_KeysetNameToInternal_HT_Mutex);
     Tcl_DeleteHashTable(&tink_KeysetNameToInternal_HT);
@@ -402,12 +480,19 @@ int Tink_Init(Tcl_Interp *interp) {
 
     tink_InitModule();
 
+
+    Tcl_CreateNamespace(interp, "::tink", nullptr, nullptr);
+    Tcl_CreateObjCommand(interp, "::tink::register_keyset", tink_RegisterKeysetCmd, nullptr, nullptr);
+    Tcl_CreateObjCommand(interp, "::tink::unregister_keyset", tink_UnregisterKeysetCmd, nullptr, nullptr);
+
     Tcl_CreateNamespace(interp, "::tink::aead", nullptr, nullptr);
     Tcl_CreateObjCommand(interp, "::tink::aead::encrypt", tink_AeadEncryptCmd, nullptr, nullptr);
     Tcl_CreateObjCommand(interp, "::tink::aead::decrypt", tink_AeadDecryptCmd, nullptr, nullptr);
     Tcl_CreateObjCommand(interp, "::tink::aead::create_keyset", tink_AeadCreateKeysetCmd, nullptr, nullptr);
-    Tcl_CreateObjCommand(interp, "::tink::register_keyset", tink_RegisterKeysetCmd, nullptr, nullptr);
-    Tcl_CreateObjCommand(interp, "::tink::unregister_keyset", tink_UnregisterKeysetCmd, nullptr, nullptr);
+
+    Tcl_CreateNamespace(interp, "::tink::mac", nullptr, nullptr);
+    Tcl_CreateObjCommand(interp, "::tink::mac::compute", tink_MacComputeCmd, nullptr, nullptr);
+    Tcl_CreateObjCommand(interp, "::tink::mac::verify", tink_MacVerifyCmd, nullptr, nullptr);
 
     return Tcl_PkgProvide(interp, "tink", XSTR(PROJECT_VERSION));
 }
