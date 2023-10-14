@@ -1,6 +1,3 @@
-#set PROJECT_DIR /path/to/your/project
-set PROJECT_DIR /home/phi/openacs/sample-project/tcl_modules/
-set auto_path [linsert $auto_path 0 ${PROJECT_DIR}/lib]
 package require tink
 
 set keyset {{
@@ -46,35 +43,3 @@ puts new_decrypted=$new_decrypted
 #set kms_client_config_dict [dict create endpoint "http://localhost:4566" region "us-east-1"]
 #set encrypted_keyset [::tink::aead::create_keyset "Aes128Gcm" $master_kms_key_uri $kms_client_config_dict]
 #puts encrypted_keyset=$encrypted_keyset
-
-
-set hmac_keyset {{
-    "primaryKeyId": 691856985,
-    "key": [
-      {
-        "keyData": {
-          "typeUrl": "type.googleapis.com/google.crypto.tink.HmacKey",
-          "keyMaterialType": "SYMMETRIC",
-          "value": "EgQIAxAgGiDZsmkTufMG/XlKlk9m7bqxustjUPT2YULEVm8mOp2mSA=="
-        },
-        "outputPrefixType": "TINK",
-        "keyId": 691856985,
-        "status": "ENABLED"
-      }
-    ]
-}}
-set hmac_keyset_handle [::tink::register_keyset $hmac_keyset]
-set content "hello world"
-set tag [::tink::mac::compute $hmac_keyset_handle $content]
-#puts mac,authentication_tag=$tag
-set verified [::tink::mac::verify $hmac_keyset_handle $tag $content]
-puts verified=$verified
-::tink::unregister_keyset $hmac_keyset_handle
-
-set new_hmac_keyset [::tink::mac::create_keyset "HmacSha256"]
-set new_hmac_keyset_handle [::tink::register_keyset $new_hmac_keyset]
-set new_tag [::tink::mac::compute $new_hmac_keyset_handle $content]
-#puts new_mac,authentication_tag=$new_tag
-set new_verified [::tink::mac::verify $new_hmac_keyset_handle $new_tag $content]
-puts new_verified=$new_verified
-::tink::unregister_keyset $new_hmac_keyset_handle
