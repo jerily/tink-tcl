@@ -20,6 +20,10 @@
 #include <tink/public_key_sign.h>
 #include <tink/public_key_verify.h>
 #include <tink/signature_key_templates.h>
+//#include <tink/jwt/jwt_public_key_sign.h>
+//#include <tink/jwt/jwt_public_key_verify.h>
+//#include <tink/jwt/jwt_validator.h>
+//#include <tink/jwt/jwk_set_converter.h>
 #include "library.h"
 
 #define XSTR(s) STR(s)
@@ -58,6 +62,14 @@ using crypto::tink::HybridKeyTemplates;
 using crypto::tink::PublicKeySign;
 using crypto::tink::PublicKeyVerify;
 using crypto::tink::SignatureKeyTemplates;
+//using ::crypto::tink::RawJwt;
+//using ::crypto::tink::RawJwtBuilder;
+//using ::crypto::tink::JwtPublicKeySign;
+//using ::crypto::tink::JwtPublicKeyVerify;
+//using ::crypto::tink::JwtValidator;
+//using ::crypto::tink::VerifiedJwt;
+//using ::crypto::tink::JwkSetFromPublicKeysetHandle;
+//using ::crypto::tink::JwkSetToPublicKeysetHandle;
 
 static int tink_ModuleInitialized;
 
@@ -377,7 +389,7 @@ static int tink_AeadCreateKeysetCmd(ClientData clientData, Tcl_Interp *interp, i
 //            key_template = AeadKeyTemplates::KmsEnvelopeAead();
             break;
         default:
-            SetResult("Unknown aead key template");
+        SetResult("Unknown aead key template");
             return TCL_ERROR;
     }
 
@@ -536,7 +548,7 @@ static int tink_MacCreateKeysetCmd(ClientData clientData, Tcl_Interp *interp, in
             key_template = MacKeyTemplates::AesCmac();
             break;
         default:
-            SetResult("Unknown mac key template");
+        SetResult("Unknown mac key template");
             return TCL_ERROR;
     }
 
@@ -655,7 +667,8 @@ static int tink_HybridDecryptCmd(ClientData clientData, Tcl_Interp *interp, int 
     return TCL_OK;
 }
 
-static int tink_HybridCreatePrivateKeysetCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]) {
+static int
+tink_HybridCreatePrivateKeysetCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]) {
     DBG(fprintf(stderr, "HybridCreatePrivateKeysetCmd\n"));
     CheckArgs(2, 2, 1, "hybrid_key_template");
 
@@ -704,7 +717,8 @@ static int tink_HybridCreatePrivateKeysetCmd(ClientData clientData, Tcl_Interp *
 
     int key_template_index;
     if (TCL_OK !=
-        Tcl_GetIndexFromObj(interp, objv[1], hybrid_key_template_names, "hybrid key template", 0, &key_template_index)) {
+        Tcl_GetIndexFromObj(interp, objv[1], hybrid_key_template_names, "hybrid key template", 0,
+                            &key_template_index)) {
         SetResult("Unknown hybrid key template");
         return TCL_ERROR;
     }
@@ -766,7 +780,7 @@ static int tink_HybridCreatePrivateKeysetCmd(ClientData clientData, Tcl_Interp *
             key_template = HybridKeyTemplates::HpkeX25519HkdfSha256ChaCha20Poly1305Raw();
             break;
         default:
-            SetResult("Unknown hybrid key template");
+        SetResult("Unknown hybrid key template");
             return TCL_ERROR;
     }
 
@@ -880,7 +894,8 @@ static int tink_SignatureVerifyCmd(ClientData clientData, Tcl_Interp *interp, in
     return TCL_OK;
 }
 
-static int tink_SignatureCreatePrivateKeysetCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]) {
+static int
+tink_SignatureCreatePrivateKeysetCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]) {
     DBG(fprintf(stderr, "SignatureCreatePrivateKeysetCmd\n"));
     CheckArgs(2, 2, 1, "signature_key_template");
 
@@ -917,7 +932,8 @@ static int tink_SignatureCreatePrivateKeysetCmd(ClientData clientData, Tcl_Inter
 
     int key_template_index;
     if (TCL_OK !=
-        Tcl_GetIndexFromObj(interp, objv[1], signature_key_template_names, "signature key template", 0, &key_template_index)) {
+        Tcl_GetIndexFromObj(interp, objv[1], signature_key_template_names, "signature key template", 0,
+                            &key_template_index)) {
         SetResult("Unknown signature key template");
         return TCL_ERROR;
     }
@@ -991,6 +1007,208 @@ static int tink_SignatureCreatePrivateKeysetCmd(ClientData clientData, Tcl_Inter
     return TCL_OK;
 }
 
+/*
+static int tink_JwtSignAndEncodeCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]) {
+    DBG(fprintf(stderr, "JwtSignAndEncodeCmd\n"));
+    CheckArgs(3, 3, 1, "keyset_handle jwt_dict");
+
+    auto keyset_name = Tcl_GetString(objv[1]);
+    auto keyset_ptr = tink_GetInternalFromKeysetName(keyset_name);
+    if (keyset_ptr == nullptr) {
+        SetResult("keyset handle not found");
+        return TCL_ERROR;
+    }
+
+    auto keyset_handle = keyset_ptr->keyset_handle;
+
+    auto valid = keyset_handle->Validate();
+    if (!valid.ok()) {
+        SetResult("error validating keyset");
+        return TCL_ERROR;
+    }
+
+    // Get the primitive.
+    absl::StatusOr<std::unique_ptr<JwtPublicKeySign>> jwt_signer = keyset_handle->GetPrimitive<JwtPublicKeySign>();
+    if (!jwt_signer.ok()) {
+        SetResult("error getting primitive");
+        return TCL_ERROR;
+    }
+
+    Tcl_Obj *audiencePtr;
+    Tcl_Obj *audienceKeyPtr = Tcl_NewStringObj("audience", -1);
+    Tcl_IncrRefCount(audienceKeyPtr);
+    if (TCL_OK != Tcl_DictObjGet(interp, objv[2], audienceKeyPtr, &audiencePtr)) {
+        Tcl_DecrRefCount(audienceKeyPtr);
+        SetResult("invalid jwt_dict");
+        return TCL_ERROR;
+    }
+    Tcl_DecrRefCount(audienceKeyPtr);
+
+    int audience_length;
+    const char *audience = Tcl_GetStringFromObj(objv[2], &audience_length);
+
+    Tcl_Obj *expirySecondsPtr;
+    Tcl_Obj *expirySecondsKeyPtr = Tcl_NewStringObj("expiry_seconds", -1);
+    Tcl_IncrRefCount(expirySecondsKeyPtr);
+    if (TCL_OK != Tcl_DictObjGet(interp, objv[2], expirySecondsKeyPtr, &expirySecondsPtr)) {
+        Tcl_DecrRefCount(expirySecondsKeyPtr);
+        SetResult("invalid jwt_dict");
+        return TCL_ERROR;
+    }
+    Tcl_DecrRefCount(expirySecondsKeyPtr);
+
+    int expirySeconds;
+    if (TCL_OK != Tcl_GetIntFromObj(interp, expirySecondsPtr, &expirySeconds) || expirySeconds < 0) {
+        SetResult("expiry seconds must be an integer >= 0");
+        return TCL_ERROR;
+    }
+
+    // TODO: more info, claims etc
+    absl::StatusOr<RawJwt> raw_jwt =
+            RawJwtBuilder()
+                    .AddAudience(audience)
+                    .SetExpiration(absl::Now() + absl::Seconds(expirySeconds))
+                    .Build();
+
+    absl::StatusOr<std::string> token =
+            (*jwt_signer)->SignAndEncode(*raw_jwt);
+
+    if (!token.ok()) {
+        SetResult("error signing");
+        return TCL_ERROR;
+    }
+
+    Tcl_SetObjResult(interp, Tcl_NewByteArrayObj((const unsigned char *) token.value().data(),
+                                                 token.value().size()));
+    return TCL_OK;
+}
+
+static int tink_JwtVerifyAndDecodeCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]) {
+    DBG(fprintf(stderr, "JwtVerifyAndDecodeCmd\n"));
+    CheckArgs(4, 4, 1, "keyset_handle token validator_dict");
+
+    auto keyset_name = Tcl_GetString(objv[1]);
+    auto keyset_ptr = tink_GetInternalFromKeysetName(keyset_name);
+    if (keyset_ptr == nullptr) {
+        SetResult("keyset handle not found");
+        return TCL_ERROR;
+    }
+
+    auto keyset_handle = keyset_ptr->keyset_handle;
+
+    auto valid = keyset_handle->Validate();
+    if (!valid.ok()) {
+        SetResult("error validating keyset");
+        return TCL_ERROR;
+    }
+
+    // Get the primitive.
+    absl::StatusOr<std::unique_ptr<JwtPublicKeyVerify>> jwt_verifier = keyset_handle->GetPrimitive<JwtPublicKeyVerify>();
+    if (!jwt_verifier.ok()) {
+        SetResult("error getting primitive");
+        return TCL_ERROR;
+    }
+
+    int token_length;
+    const unsigned char *token = Tcl_GetByteArrayFromObj(objv[2], &token_length);
+    absl::StatusOr<std::string> token_str = std::string((const char *) token, token_length);
+
+    // TODO: get more info
+    Tcl_Obj *audiencePtr;
+    Tcl_Obj *audienceKeyPtr = Tcl_NewStringObj("audience", -1);
+    Tcl_IncrRefCount(audienceKeyPtr);
+    if (TCL_OK != Tcl_DictObjGet(interp, objv[3], audienceKeyPtr, &audiencePtr)) {
+        Tcl_DecrRefCount(audienceKeyPtr);
+        SetResult("invalid validator_dict");
+        return TCL_ERROR;
+    }
+    Tcl_DecrRefCount(audienceKeyPtr);
+
+    int audience_length;
+    const char *audience = Tcl_GetStringFromObj(audiencePtr, &audience_length);
+
+    absl::StatusOr<JwtValidator> validator =
+            crypto::tink::JwtValidatorBuilder()
+                .ExpectAudience(audience)
+                .Build();
+    if (!validator.ok()) {
+        SetResult("error creating validator");
+        return TCL_ERROR;
+    }
+
+    absl::StatusOr<VerifiedJwt> verified_jwt =
+            (*jwt_verifier)->VerifyAndDecode(*token_str, *validator);
+
+    Tcl_SetObjResult(interp, Tcl_NewBooleanObj(verified_jwt.ok()));
+    return TCL_OK;
+}
+
+static int tink_JwkSetToPublicKeysetCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]) {
+    DBG(fprintf(stderr, "JwkSetToPublicKeysetCmd\n"));
+    CheckArgs(2, 2, 1, "jwk_set");
+
+    int jwk_set_length;
+    absl::StatusOr<std::string> jwk_set = Tcl_GetStringFromObj(objv[1], &jwk_set_length);
+
+    absl::StatusOr<std::unique_ptr<KeysetHandle>> keyset_handle =
+      JwkSetToPublicKeysetHandle(*jwk_set);
+
+
+    auto public_keyset_handle = (*keyset_handle)->GetPublicKeysetHandle();
+    if (!public_keyset_handle.ok()) {
+        SetResult("Error getting public keyset handle");
+        return TCL_ERROR;
+    }
+
+    std::stringbuf buffer;
+    auto output_stream = absl::make_unique<std::ostream>(&buffer);
+
+    absl::StatusOr<std::unique_ptr<JsonKeysetWriter>> keyset_writer = JsonKeysetWriter::New(std::move(output_stream));
+    if (!keyset_writer.ok()) {
+        SetResult("Error creating writer");
+        return TCL_ERROR;
+    }
+
+    absl::Status status = CleartextKeysetHandle::Write((keyset_writer)->get(), **public_keyset_handle);;
+    if (!status.ok()) {
+        SetResult("Error writing keyset");
+        return TCL_ERROR;
+    }
+
+    Tcl_SetObjResult(interp, Tcl_NewStringObj(buffer.str().c_str(), buffer.str().size()));
+    return TCL_OK;
+}
+
+static int tink_JwkSetFromPublicKeysetCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]) {
+    DBG(fprintf(stderr, "tink_JwkSetFromPublicKeysetCmd\n"));
+    CheckArgs(2, 2, 1, "public_keyset");
+
+    absl::string_view keyset = Tcl_GetString(objv[1]);
+    auto reader_result = JsonKeysetReader::New(keyset);
+    if (!reader_result.ok()) {
+        SetResult("Error creating reader");
+        return TCL_ERROR;
+    }
+
+    absl::StatusOr<std::unique_ptr<KeysetHandle>> keyset_handle = CleartextKeysetHandle::Read(
+            *std::move(reader_result));
+    if (!keyset_handle.ok()) {
+        SetResult("Error reading keyset_handle");
+        return TCL_ERROR;
+    }
+
+
+    absl::StatusOr<std::string> public_jwk_set =
+            JwkSetFromPublicKeysetHandle(**keyset_handle);
+    if (!public_jwk_set.ok()) {
+        SetResult("Error getting public keyset");
+    }
+
+    Tcl_SetObjResult(interp, Tcl_NewStringObj(public_jwk_set.value().c_str(), public_jwk_set.value().size()));
+    return TCL_OK;
+}
+*/
+
 static void tink_ExitHandler(ClientData unused) {
     Tcl_MutexLock(&tink_KeysetNameToInternal_HT_Mutex);
     Tcl_DeleteHashTable(&tink_KeysetNameToInternal_HT);
@@ -1039,12 +1257,23 @@ int Tink_Init(Tcl_Interp *interp) {
     Tcl_CreateNamespace(interp, "::tink::hybrid", nullptr, nullptr);
     Tcl_CreateObjCommand(interp, "::tink::hybrid::encrypt", tink_HybridEncryptCmd, nullptr, nullptr);
     Tcl_CreateObjCommand(interp, "::tink::hybrid::decrypt", tink_HybridDecryptCmd, nullptr, nullptr);
-    Tcl_CreateObjCommand(interp, "::tink::hybrid::create_private_keyset", tink_HybridCreatePrivateKeysetCmd, nullptr, nullptr);
+    Tcl_CreateObjCommand(interp, "::tink::hybrid::create_private_keyset", tink_HybridCreatePrivateKeysetCmd, nullptr,
+                         nullptr);
 
     Tcl_CreateNamespace(interp, "::tink::signature", nullptr, nullptr);
     Tcl_CreateObjCommand(interp, "::tink::signature::sign", tink_SignatureSignCmd, nullptr, nullptr);
     Tcl_CreateObjCommand(interp, "::tink::signature::verify", tink_SignatureVerifyCmd, nullptr, nullptr);
-    Tcl_CreateObjCommand(interp, "::tink::signature::create_private_keyset", tink_SignatureCreatePrivateKeysetCmd, nullptr, nullptr);
+    Tcl_CreateObjCommand(interp, "::tink::signature::create_private_keyset", tink_SignatureCreatePrivateKeysetCmd,
+                         nullptr, nullptr);
+
+    /*
+    Tcl_CreateNamespace(interp, "::tink::jwt", nullptr, nullptr);
+    Tcl_CreateObjCommand(interp, "::tink::jwt::sign_and_encode", tink_JwtSignAndEncodeCmd, nullptr, nullptr);
+    Tcl_CreateObjCommand(interp, "::tink::jwt::verify_and_decode", tink_JwtVerifyAndDecodeCmd, nullptr, nullptr);
+    Tcl_CreateObjCommand(interp, "::tink::jwt::jwk_set_to_public_keyset", tink_JwkSetToPublicKeysetCmd, nullptr,
+                         nullptr);
+    Tcl_CreateObjCommand(interp, "::tink::jwt::public_keyset_to_jwk_set", tink_JwkSetFromPublicKeysetCmd, nullptr, nullptr);
+    */
 
     return Tcl_PkgProvide(interp, "tink", XSTR(PROJECT_VERSION));
 }
