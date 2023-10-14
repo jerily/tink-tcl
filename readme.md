@@ -47,6 +47,7 @@ cmake .. \
   -DCMAKE_BUILD_TYPE=Release
 make
 make install
+```
 
 ## Install module for TCL
 ```bash
