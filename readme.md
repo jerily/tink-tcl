@@ -2,11 +2,6 @@
 
 Tcl bindings for [Tink](https://github.com/tink-crypto/tink-cc), a multi-language, cross-platform library that provides cryptographic APIs that are secure, easy to use correctly, and hard(er) to misuse.
 
-## Set the installation directory
-```bash
-export PROJECT_INSTALL_DIR=/path/to/your/project
-```
-
 ## Clone the repository
 ```bash
 git clone https://github.com/jerily/tink-tcl.git
@@ -44,7 +39,8 @@ cmake .. \
   -DTINK_USE_INSTALLED_PROTOBUF=OFF \
   -DTINK_USE_INSTALLED_RAPIDJSON=OFF \
   -DCMAKE_SKIP_RPATH=ON \
-  -DCMAKE_BUILD_TYPE=Release
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_INSTALL_PREFIX=/usr/local
 make
 make install
 ```
@@ -54,8 +50,7 @@ make install
 cd ${TINK_TCL_DIR}
 mkdir build
 cd build
-export LD_LIBRARY_PATH=${PROJECT_INSTALL_DIR}:$LD_LIBRARY_PATH
-cmake .. -DCMAKE_INSTALL_PREFIX=${PROJECT_INSTALL_DIR}
+cmake ..
 make
 make install
 ```
