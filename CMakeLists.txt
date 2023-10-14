@@ -13,7 +13,11 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(BUILD_SHARED_LIBS ON)
 find_package(Threads REQUIRED)
 find_package (PkgConfig REQUIRED)
-pkg_check_modules (ABSL REQUIRED absl_status absl_synchronization absl_strings) # ABSL_INCLUDE_DIRS, ABSL_LIBRARIES
+pkg_check_modules (ABSL REQUIRED absl_status absl_synchronization absl_strings) # ABSL_INCLUDE_DIRS, ABSL_LIBRARIES, ABSL_LIBRARY_DIRS
+
+message(STATUS "ABSL_INCLUDE_DIRS: ${ABSL_INCLUDE_DIRS}")
+message(STATUS "ABSL_LIBRARIES: ${ABSL_LIBRARIES}")
+message(STATUS "ABSL_LIBRARY_DIRS: ${ABSL_LIBRARY_DIRS}")
 
 #set(CMAKE_VERBOSE_MAKEFILE ON)
 set(CMAKE_CXX_FLAGS "-DTCL_THREADS -DPROJECT_VERSION=${PROJECT_VERSION} ${CMAKE_CXX_FLAGS} -L${CMAKE_INSTALL_PREFIX}/lib")
@@ -23,8 +27,8 @@ add_library(tink-tcl MODULE
 )
 set_target_properties(tink-tcl PROPERTIES POSITION_INDEPENDENT_CODE ON)
 include_directories("${CMAKE_INSTALL_PREFIX}/include" ${TCL_INCLUDE_PATH} ${ABSL_INCLUDE_DIRS})
-link_directories(tink-tcl "${CMAKE_INSTALL_PREFIX}/lib" ${TCL_LIBRARY_PATH})
-target_link_libraries(tink-tcl PRIVATE tink ${ABSL_LIBRARIES} protobuf protobuf-lite)
+link_directories(tink-tcl "${CMAKE_INSTALL_PREFIX}/lib" ${TCL_LIBRARY_PATH} ${ABSL_LIBRARY_DIRS})
+target_link_libraries(tink-tcl PRIVATE tink ${ABSL_LIBRARIES})
 
 install(TARGETS ${TARGET}
         LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/${TARGET}${PROJECT_VERSION}

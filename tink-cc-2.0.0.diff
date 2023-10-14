@@ -1,15 +1,25 @@
-diff -ur tink-cc-2.0.0/./cmake/TinkWorkspace.cmake tink-cc/./cmake/TinkWorkspace.cmake
---- tink-cc-2.0.0/./cmake/TinkWorkspace.cmake	2023-04-27 03:16:23.000000000 -0400
-+++ tink-cc/./cmake/TinkWorkspace.cmake	2023-09-08 08:34:59.676507312 -0400
-@@ -109,6 +109,7 @@
+diff -ur tink-cc-2.0.0/cmake/TinkWorkspace.cmake tink-cc/cmake/TinkWorkspace.cmake
+--- tink-cc-2.0.0/cmake/TinkWorkspace.cmake	2023-04-27 03:16:23.000000000 -0400
++++ tink-cc/cmake/TinkWorkspace.cmake	2023-10-14 03:40:17.488897930 -0400
+@@ -95,6 +95,7 @@
+ # defined.
+ if (NOT TARGET crypto)
+   if (NOT TINK_USE_SYSTEM_OPENSSL)
++    set(BUILD_SHARED_LIBS OFF)
+     # Commit from Feb 15, 2023.
+     # NOTE: This is one commit ahead of Bazel; the commit fixes a CMake issue,
+     # which made build fail on CMake 3.10.
+@@ -108,7 +109,9 @@
+     # BoringSSL targets do not carry include directory info, this fixes it.
      target_include_directories(crypto PUBLIC
        "$<BUILD_INTERFACE:${boringssl_SOURCE_DIR}/src/include>")
++    set(BUILD_SHARED_LIBS ON)
    else()
 +    list(APPEND CMAKE_FIND_ROOT_PATH "$ENV{OPENSSL_CUSTOM_ROOT_DIR}")
      # Support for ED25519 was added from 1.1.1.
      find_package(OpenSSL 1.1.1 EXACT REQUIRED)
      _create_interface_target(crypto OpenSSL::Crypto)
-@@ -123,21 +124,29 @@
+@@ -123,21 +126,31 @@
  set(RAPIDJSON_BUILD_EXAMPLES OFF CACHE BOOL "Tink dependency override" FORCE)
  set(RAPIDJSON_BUILD_TESTS OFF CACHE BOOL "Tink dependency override" FORCE)
  
@@ -44,6 +54,7 @@ diff -ur tink-cc-2.0.0/./cmake/TinkWorkspace.cmake tink-cc/./cmake/TinkWorkspace
 -  CMAKE_SUBDIR cmake
 -)
 +if(NOT TINK_USE_INSTALLED_PROTOBUF)
++  set(BUILD_SHARED_LIBS OFF)
 +  ## Use protobuf X.21.9.
 +  http_archive(
 +    NAME com_google_protobuf
@@ -51,12 +62,13 @@ diff -ur tink-cc-2.0.0/./cmake/TinkWorkspace.cmake tink-cc/./cmake/TinkWorkspace
 +    SHA256 5babb8571f1cceafe0c18e13ddb3be556e87e12ceea3463d6b0d0064e6cc1ac3
 +    CMAKE_SUBDIR cmake
 +  )
++  set(BUILD_SHARED_LIBS ON)
 +else()
 +  find_package(Protobuf REQUIRED)
 +endif()
-diff -ur tink-cc-2.0.0/./CMakeLists.txt tink-cc/./CMakeLists.txt
---- tink-cc-2.0.0/./CMakeLists.txt	2023-04-27 03:16:23.000000000 -0400
-+++ tink-cc/./CMakeLists.txt	2023-09-08 08:11:44.254690670 -0400
+diff -ur tink-cc-2.0.0/CMakeLists.txt tink-cc/CMakeLists.txt
+--- tink-cc-2.0.0/CMakeLists.txt	2023-04-27 03:16:23.000000000 -0400
++++ tink-cc/CMakeLists.txt	2023-10-12 03:27:57.749763462 -0400
 @@ -1,5 +1,14 @@
  cmake_minimum_required(VERSION 3.13)
 -project(Tink VERSION 2.0.0 LANGUAGES CXX)
@@ -117,9 +129,10 @@ diff -ur tink-cc-2.0.0/./CMakeLists.txt tink-cc/./CMakeLists.txt
 +#  )
 +endif()
 \ No newline at end of file
-diff -ur tink-cc-2.0.0/./tink/CMakeLists.txt tink-cc/./tink/CMakeLists.txt
---- tink-cc-2.0.0/./tink/CMakeLists.txt	2023-04-27 03:16:23.000000000 -0400
-+++ tink-cc/./tink/CMakeLists.txt	2023-09-07 11:40:47.631956906 -0400
+Only in tink-cc: install
+diff -ur tink-cc-2.0.0/tink/CMakeLists.txt tink-cc/tink/CMakeLists.txt
+--- tink-cc-2.0.0/tink/CMakeLists.txt	2023-04-27 03:16:23.000000000 -0400
++++ tink-cc/tink/CMakeLists.txt	2023-10-12 03:27:57.749763462 -0400
 @@ -24,9 +24,7 @@
  
  set(TINK_VERSION_H "${TINK_GENFILE_DIR}/tink/version.h")
