@@ -35,6 +35,7 @@ set_target_properties(tink-tcl PROPERTIES POSITION_INDEPENDENT_CODE ON)
 get_filename_component(TCL_LIBRARY_PATH "${TCL_LIBRARY}" PATH)
 include_directories(${TCL_INCLUDE_PATH} ${ABSL_INCLUDE_DIRS})
 link_directories(tink-tcl ${TCL_LIBRARY_PATH} ${ABSL_LIBRARY_DIRS})
+target_link_directories(tink-tcl PRIVATE ${TCL_LIBRARY_PATH} ${ABSL_LIBRARY_DIRS})
 target_link_libraries(tink-tcl PRIVATE tink ${TCL_LIBRARY} ${ABSL_LIBRARIES})
 
 install(TARGETS ${TARGET}

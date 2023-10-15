@@ -30,6 +30,7 @@ cd build
 cmake .. \
   -DBUILD_SHARED_LIBS=ON \
   -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_CXX_STANDARD=14 \
   -DCMAKE_INSTALL_PREFIX=/usr/local
 make
 make install
