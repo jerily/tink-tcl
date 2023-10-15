@@ -27,6 +27,7 @@
 #include <tink/jwt/jwt_public_key_verify.h>
 #include <tink/jwt/jwt_validator.h>
 #include <tink/jwt/jwk_set_converter.h>
+#include <tink/jwt/jwt_signature_config.h>
 #include "library.h"
 
 #define XSTR(s) STR(s)
@@ -75,7 +76,7 @@ using ::crypto::tink::JwtValidator;
 using ::crypto::tink::VerifiedJwt;
 using ::crypto::tink::JwkSetFromPublicKeysetHandle;
 using ::crypto::tink::JwkSetToPublicKeysetHandle;
-
+using ::crypto::tink::JwtSignatureRegister;
 static int tink_ModuleInitialized;
 
 static Tcl_HashTable tink_KeysetNameToInternal_HT;
@@ -1189,10 +1190,10 @@ static int tink_JwtSignAndEncodeCmd(ClientData clientData, Tcl_Interp *interp, i
     Tcl_DecrRefCount(audienceKeyPtr);
 
     int audience_length;
-    const char *audience = Tcl_GetStringFromObj(objv[2], &audience_length);
+    const char *audience = Tcl_GetStringFromObj(audiencePtr, &audience_length);
 
     Tcl_Obj *expirySecondsPtr;
-    Tcl_Obj *expirySecondsKeyPtr = Tcl_NewStringObj("expiry_seconds", -1);
+    Tcl_Obj *expirySecondsKeyPtr = Tcl_NewStringObj("expirySeconds", -1);
     Tcl_IncrRefCount(expirySecondsKeyPtr);
     if (TCL_OK != Tcl_DictObjGet(interp, objv[2], expirySecondsKeyPtr, &expirySecondsPtr)) {
         Tcl_DecrRefCount(expirySecondsKeyPtr);
@@ -1201,9 +1202,9 @@ static int tink_JwtSignAndEncodeCmd(ClientData clientData, Tcl_Interp *interp, i
     }
     Tcl_DecrRefCount(expirySecondsKeyPtr);
 
-    int expirySeconds;
-    if (TCL_OK != Tcl_GetIntFromObj(interp, expirySecondsPtr, &expirySeconds) || expirySeconds < 0) {
-        SetResult("expiry seconds must be an integer >= 0");
+    long expirySeconds;
+    if (TCL_OK != Tcl_GetLongFromObj(interp, expirySecondsPtr, &expirySeconds) || expirySeconds < 0) {
+        SetResult("expiry seconds must be a long integer >= 0");
         return TCL_ERROR;
     }
 
@@ -1364,6 +1365,10 @@ void tink_InitModule() {
         if (!status.ok()) {
             std::cerr << "TinkConfig::Register() failed " << std::endl;
         }
+        auto jwt_status = JwtSignatureRegister();
+        if (!jwt_status.ok()) {
+            std::cerr << "JwtSignatureRegister() failed " << std::endl;
+        }
 
         Tcl_MutexLock(&tink_KeysetNameToInternal_HT_Mutex);
         Tcl_InitHashTable(&tink_KeysetNameToInternal_HT, TCL_STRING_KEYS);
@@ -1421,7 +1426,7 @@ int Tink_Init(Tcl_Interp *interp) {
     Tcl_CreateObjCommand(interp, "::tink::jwt::verify_and_decode", tink_JwtVerifyAndDecodeCmd, nullptr, nullptr);
     Tcl_CreateObjCommand(interp, "::tink::jwt::jwk_set_to_public_keyset", tink_JwkSetToPublicKeysetCmd, nullptr,
                          nullptr);
-    Tcl_CreateObjCommand(interp, "::tink::jwt::public_keyset_to_jwk_set", tink_JwkSetFromPublicKeysetCmd, nullptr, nullptr);
+    Tcl_CreateObjCommand(interp, "::tink::jwt::jwk_set_from_public_keyset", tink_JwkSetFromPublicKeysetCmd, nullptr, nullptr);
 
     return Tcl_PkgProvide(interp, "tink", XSTR(PROJECT_VERSION));
 }
