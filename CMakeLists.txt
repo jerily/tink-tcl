@@ -31,7 +31,10 @@ add_library(tink-tcl MODULE
         src/library.cc
 )
 
-set_target_properties(tink-tcl PROPERTIES POSITION_INDEPENDENT_CODE ON)
+set_target_properties(tink-tcl PROPERTIES
+        POSITION_INDEPENDENT_CODE ON
+        INSTALL_RPATH_USE_LINK_PATH ON
+)
 get_filename_component(TCL_LIBRARY_PATH "${TCL_LIBRARY}" PATH)
 include_directories(${TCL_INCLUDE_PATH} ${ABSL_INCLUDE_DIRS})
 link_directories(tink-tcl ${TCL_LIBRARY_PATH} ${ABSL_LIBRARY_DIRS})
