@@ -15,12 +15,6 @@ A compatible C++ compiler supporting at least C++14 is required.
 
 ### Abseil
 
-On MacOS:
-```bash
-brew install abseil
-```
-
-On Linux:
 ```bash
 wget https://github.com/abseil/abseil-cpp/archive/refs/tags/20230125.0.tar.gz
 tar -xzf 20230125.0.tar.gz
