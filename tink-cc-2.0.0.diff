@@ -185,9 +185,9 @@ diff -ur tink-cc-2.0.0/tink/CMakeLists.txt tink-cc/tink/CMakeLists.txt
 +  if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 +  target_link_libraries(tink
 +	  PRIVATE
-+      -Wl,-all_load
++      -Wl,--all_load
 +      ${TINK_PUBLIC_API_DEPS}
-+      -Wl,-noall_load
++      -Wl,--noall_load
 +  )
 +  else()
 +  target_link_libraries(tink
