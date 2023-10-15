@@ -184,7 +184,6 @@ diff -ur tink-cc-2.0.0/tink/CMakeLists.txt tink-cc/tink/CMakeLists.txt
 +	  PRIVATE
 +    -Wl,--version-script="${CMAKE_CURRENT_SOURCE_DIR}/version_script.lds"
 +    -Wl,--gc-sections
-+    -Wl,--icf=all
 +    -Wl,--strip-all
 +  )
 +  target_include_directories(tink PUBLIC ${TINK_INCLUDE_DIRS})
