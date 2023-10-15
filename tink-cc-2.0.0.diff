@@ -1,6 +1,6 @@
 diff -ur tink-cc-2.0.0/cmake/TinkWorkspace.cmake tink-cc/cmake/TinkWorkspace.cmake
 --- tink-cc-2.0.0/cmake/TinkWorkspace.cmake	2023-04-27 03:16:23.000000000 -0400
-+++ tink-cc/cmake/TinkWorkspace.cmake	2023-10-14 03:40:17.488897930 -0400
++++ tink-cc/cmake/TinkWorkspace.cmake	2023-10-15 08:42:22.646743247 -0400
 @@ -95,6 +95,7 @@
  # defined.
  if (NOT TARGET crypto)
@@ -68,7 +68,7 @@ diff -ur tink-cc-2.0.0/cmake/TinkWorkspace.cmake tink-cc/cmake/TinkWorkspace.cma
 +endif()
 diff -ur tink-cc-2.0.0/CMakeLists.txt tink-cc/CMakeLists.txt
 --- tink-cc-2.0.0/CMakeLists.txt	2023-04-27 03:16:23.000000000 -0400
-+++ tink-cc/CMakeLists.txt	2023-10-12 03:27:57.749763462 -0400
++++ tink-cc/CMakeLists.txt	2023-10-15 08:42:22.650743354 -0400
 @@ -1,5 +1,14 @@
  cmake_minimum_required(VERSION 3.13)
 -project(Tink VERSION 2.0.0 LANGUAGES CXX)
@@ -129,10 +129,9 @@ diff -ur tink-cc-2.0.0/CMakeLists.txt tink-cc/CMakeLists.txt
 +#  )
 +endif()
 \ No newline at end of file
-Only in tink-cc: install
 diff -ur tink-cc-2.0.0/tink/CMakeLists.txt tink-cc/tink/CMakeLists.txt
 --- tink-cc-2.0.0/tink/CMakeLists.txt	2023-04-27 03:16:23.000000000 -0400
-+++ tink-cc/tink/CMakeLists.txt	2023-10-12 03:27:57.749763462 -0400
++++ tink-cc/tink/CMakeLists.txt	2023-10-15 08:44:15.577783963 -0400
 @@ -24,9 +24,7 @@
  
  set(TINK_VERSION_H "${TINK_GENFILE_DIR}/tink/version.h")
@@ -169,7 +168,7 @@ diff -ur tink-cc-2.0.0/tink/CMakeLists.txt tink-cc/tink/CMakeLists.txt
    PUBLIC
  )
  
-@@ -1050,6 +1057,34 @@
+@@ -1050,6 +1057,45 @@
      tink::util::test_matchers
  )
  
@@ -180,6 +179,17 @@ diff -ur tink-cc-2.0.0/tink/CMakeLists.txt tink-cc/tink/CMakeLists.txt
 +    version_script.lds
 +    exported_symbols.lds
 +  )
++
++  target_include_directories(tink PUBLIC ${TINK_INCLUDE_DIRS})
++
++  if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
++  target_link_libraries(tink
++	  PRIVATE
++      -Wl,--all_load
++      ${TINK_PUBLIC_API_DEPS}
++      -Wl,--noall_load
++  )
++  else()
 +  target_link_libraries(tink
 +	  PRIVATE
 +    -fuse-ld=gold  # GNU ld does not support ICF.
@@ -188,13 +198,13 @@ diff -ur tink-cc-2.0.0/tink/CMakeLists.txt tink-cc/tink/CMakeLists.txt
 +    -Wl,--icf=all
 +    -Wl,--strip-all
 +  )
-+  target_include_directories(tink PUBLIC ${TINK_INCLUDE_DIRS})
 +  target_link_libraries(tink
 +	  PRIVATE
 +      -Wl,--whole-archive
 +      ${TINK_PUBLIC_API_DEPS}
 +      -Wl,--no-whole-archive
 +  )
++  endif()
 +  set_target_properties(tink PROPERTIES SOVERSION ${TINK_CC_VERSION_LABEL})
 +
 +  install(TARGETS tink EXPORT Tink LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
