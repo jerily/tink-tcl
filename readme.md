@@ -10,9 +10,18 @@ export TINK_TCL_DIR=`pwd`
 ```
 
 ## Install dependencies
-```bash
 
-#abseil
+A compatible C++ compiler supporting at least C++14 is required.
+
+### Abseil
+
+On MacOS:
+```bash
+brew install abseil
+```
+
+On Linux:
+```bash
 wget https://github.com/abseil/abseil-cpp/archive/refs/tags/20230125.0.tar.gz
 tar -xzf 20230125.0.tar.gz
 cd abseil-cpp-20230125.0
@@ -24,8 +33,10 @@ cmake .. \
   -DCMAKE_INSTALL_PREFIX=/usr/local
 make
 make install
+```
 
-#tink
+### tink
+```
 wget https://github.com/tink-crypto/tink-cc/archive/refs/tags/v2.0.0.tar.gz
 tar -xzf v2.0.0.tar.gz
 cd tink-cc-2.0.0
