@@ -182,6 +182,7 @@ diff -ur tink-cc-2.0.0/tink/CMakeLists.txt tink-cc/tink/CMakeLists.txt
 +  )
 +  target_link_libraries(tink
 +	  PRIVATE
++    -fuse-ld=gold  # GNU ld does not support ICF.
 +    -Wl,--version-script="${CMAKE_CURRENT_SOURCE_DIR}/version_script.lds"
 +    -Wl,--gc-sections
 +    -Wl,--icf=all
