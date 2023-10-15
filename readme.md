@@ -233,3 +233,11 @@ make install
   ```tcl
   set keyset [::tink::daead::create_keyset "AES256_SIV"]
   ```
+
+## Examples
+
+* [AEAD](examples/example-aead.tcl)
+* [Hybrid Encryption](examples/example-hybrid.tcl)
+* [MAC](examples/example-mac.tcl)
+* [Digital Signatures](examples/example-signature.tcl)
+* [Deterministic AEAD](examples/example-daead.tcl)
