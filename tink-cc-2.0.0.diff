@@ -187,7 +187,7 @@ diff -ur tink-cc-2.0.0/tink/CMakeLists.txt tink-cc/tink/CMakeLists.txt
 +	  PRIVATE
 +      -Wl,-all_load
 +      ${TINK_PUBLIC_API_DEPS}
-+      -Wl,-no-all_load
++      -Wl,-noall_load
 +  )
 +  else()
 +  target_link_libraries(tink
