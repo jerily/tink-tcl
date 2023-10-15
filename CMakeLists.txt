@@ -15,7 +15,7 @@ set(BUILD_SHARED_LIBS ON)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 find_package(Threads REQUIRED)
 find_package (PkgConfig REQUIRED)
-pkg_check_modules (ABSL REQUIRED absl_status absl_synchronization absl_strings) # ABSL_INCLUDE_DIRS, ABSL_LIBRARIES, ABSL_LIBRARY_DIRS
+pkg_check_modules (ABSL REQUIRED absl_status absl_statusor absl_synchronization absl_strings absl_hash absl_raw_hash_set) # ABSL_INCLUDE_DIRS, ABSL_LIBRARIES, ABSL_LIBRARY_DIRS
 find_package(TCL EXACT 8.6.13 REQUIRED)  # TCL_INCLUDE_PATH TCL_LIBRARY
 
 message(STATUS "TCL_INCLUDE_PATH: ${TCL_INCLUDE_PATH}")
