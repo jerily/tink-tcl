@@ -34,12 +34,3 @@ set new_decrypted [::tink::aead::decrypt $new_keyset_handle $new_encrypted $asso
 #puts new_encrypted=[string range $new_encrypted 0 40]
 puts new_decrypted=$new_decrypted
 ::tink::unregister_keyset $new_keyset_handle
-
-# using LocalStack, you can get a KMS key uri like this:
-# awslocal kms create-key
-# and when you run this example, you can run it as follows:
-# AWS_ENDPOINT_URL="http://localhost:4566" tclsh ../examples/example.tcl
-#set master_kms_key_uri "aws-kms://arn:aws:kms:us-east-1:000000000000:key/f8def55d-0283-4f60-8d97-169bd1a7aaba"
-#set kms_client_config_dict [dict create endpoint "http://localhost:4566" region "us-east-1"]
-#set encrypted_keyset [::tink::aead::create_keyset "Aes128Gcm" $master_kms_key_uri $kms_client_config_dict]
-#puts encrypted_keyset=$encrypted_keyset

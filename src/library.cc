@@ -11,7 +11,10 @@
 #include <tink/json_keyset_reader.h>
 #include <tink/json_keyset_writer.h>
 #include <tink/cleartext_keyset_handle.h>
+#include <tink/aead.h>
 #include <tink/aead/aead_key_templates.h>
+#include <tink/deterministic_aead.h>
+#include <tink/deterministic_aead_key_templates.h>
 #include <tink/mac.h>
 #include <tink/mac/mac_key_templates.h>
 #include <tink/hybrid_encrypt.h>
@@ -62,6 +65,8 @@ using crypto::tink::HybridKeyTemplates;
 using crypto::tink::PublicKeySign;
 using crypto::tink::PublicKeyVerify;
 using crypto::tink::SignatureKeyTemplates;
+using crypto::tink::DeterministicAead;
+using crypto::tink::DeterministicAeadKeyTemplates;
 //using ::crypto::tink::RawJwt;
 //using ::crypto::tink::RawJwtBuilder;
 //using ::crypto::tink::JwtPublicKeySign;
@@ -1002,6 +1007,151 @@ tink_SignatureCreatePrivateKeysetCmd(ClientData clientData, Tcl_Interp *interp, 
     return TCL_OK;
 }
 
+static int tink_DeterministicAeadEncryptCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]) {
+    DBG(fprintf(stderr, "DeterministicAeadEncryptCmd\n"));
+    CheckArgs(3, 4, 1, "keyset_handle plaintext ?associated_data?");
+
+    auto keyset_name = Tcl_GetString(objv[1]);
+    auto keyset_ptr = tink_GetInternalFromKeysetName(keyset_name);
+    if (keyset_ptr == nullptr) {
+        SetResult("keyset handle not found");
+        return TCL_ERROR;
+    }
+
+    auto keyset_handle = keyset_ptr->keyset_handle;
+
+    auto valid = keyset_handle->Validate();
+    if (!valid.ok()) {
+        SetResult("error validating keyset");
+        return TCL_ERROR;
+    }
+
+    // Get the primitive.
+    absl::StatusOr<std::unique_ptr<DeterministicAead>> daead_primitive = keyset_handle->GetPrimitive<DeterministicAead>();
+    if (!daead_primitive.ok()) {
+        SetResult("error getting primitive");
+        return TCL_ERROR;
+    }
+
+    int plaintext_length;
+    const unsigned char *plaintext = Tcl_GetByteArrayFromObj(objv[2], &plaintext_length);
+    absl::StatusOr<std::string> plaintext_str = std::string((const char *) plaintext, plaintext_length);
+
+    int associated_data_length;
+    auto associated_data = (objc == 4) ? Tcl_GetByteArrayFromObj(objv[3], &associated_data_length) : nullptr;
+    absl::string_view associated_data_str = (objc == 4) ? absl::string_view((const char *) associated_data,
+                                                                            associated_data_length) : "";
+
+    absl::StatusOr<std::string> encrypt_result =
+            (*daead_primitive)->EncryptDeterministically(*plaintext_str, associated_data_str);
+
+    if (!encrypt_result.ok()) {
+        SetResult("error encrypting");
+        return TCL_ERROR;
+    }
+
+    Tcl_SetObjResult(interp, Tcl_NewByteArrayObj((const unsigned char *) encrypt_result.value().data(),
+                                                 encrypt_result.value().size()));
+    return TCL_OK;
+}
+
+static int tink_DeterministicAeadDecryptCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]) {
+    DBG(fprintf(stderr, "DeterministicAeadDecryptCmd\n"));
+    CheckArgs(3, 4, 1, "keyset_handle ciphertext ?associated_data?");
+
+    auto keyset_name = Tcl_GetString(objv[1]);
+    auto keyset_ptr = tink_GetInternalFromKeysetName(keyset_name);
+    if (keyset_ptr == nullptr) {
+        SetResult("keyset handle not found");
+        return TCL_ERROR;
+    }
+
+    auto keyset_handle = keyset_ptr->keyset_handle;
+
+    // Get the primitive.
+    absl::StatusOr<std::unique_ptr<DeterministicAead>> daead_primitive = keyset_handle->GetPrimitive<DeterministicAead>();
+    if (!daead_primitive.ok()) {
+        SetResult("error getting primitive");
+        return TCL_ERROR;
+    }
+
+    int ciphertext_length;
+    const unsigned char *ciphertext = Tcl_GetByteArrayFromObj(objv[2], &ciphertext_length);
+    absl::StatusOr<std::string> ciphertext_str = std::string((const char *) ciphertext, ciphertext_length);
+
+    int associated_data_length;
+    auto associated_data = (objc == 4) ? Tcl_GetByteArrayFromObj(objv[3], &associated_data_length) : nullptr;
+    absl::string_view associated_data_str = (objc == 4) ? absl::string_view((const char *) associated_data,
+                                                                            associated_data_length) : "";
+    absl::StatusOr<std::string> decrypt_result =
+            (*daead_primitive)->DecryptDeterministically(*ciphertext_str, associated_data_str);
+
+    if (!decrypt_result.ok()) {
+        SetResult("error decrypting");
+        return TCL_ERROR;
+    }
+
+    Tcl_SetObjResult(interp, Tcl_NewByteArrayObj((const unsigned char *) decrypt_result.value().data(),
+                                                 decrypt_result.value().size()));
+    return TCL_OK;
+}
+
+static int tink_DaeadCreateKeysetCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]) {
+    DBG(fprintf(stderr, "AeadCreateKeysetCmd\n"));
+    CheckArgs(2, 2, 1, "deterministic_aead_key_template");
+
+    static const char *aead_key_template_names[] = {
+            "AES256_SIV",
+            nullptr
+    };
+
+    enum aead_key_templates {
+        Aes256Siv
+    };
+
+    int key_template_index;
+    if (TCL_OK !=
+        Tcl_GetIndexFromObj(interp, objv[1], aead_key_template_names, "aead key template", 0, &key_template_index)) {
+        SetResult("Unknown aead key template");
+        return TCL_ERROR;
+    }
+
+    KeyTemplate key_template;
+    switch ((enum aead_key_templates) key_template_index) {
+        case Aes256Siv:
+            key_template = DeterministicAeadKeyTemplates::Aes256Siv();
+            break;
+        default:
+        SetResult("Unknown deterministic aead key template");
+            return TCL_ERROR;
+    }
+
+    // This will generate a new keyset with only *one* key and return a keyset handle to it.
+    absl::StatusOr<std::unique_ptr<KeysetHandle>> keyset_handle = KeysetHandle::GenerateNew(key_template);
+    if (!keyset_handle.ok()) {
+        SetResult("Error generating keyset");
+        return TCL_ERROR;
+    }
+
+    std::stringbuf buffer;
+    auto output_stream = absl::make_unique<std::ostream>(&buffer);
+
+    absl::StatusOr<std::unique_ptr<JsonKeysetWriter>> keyset_writer = JsonKeysetWriter::New(std::move(output_stream));
+    if (!keyset_writer.ok()) {
+        SetResult("Error creating writer");
+        return TCL_ERROR;
+    }
+
+    absl::Status status = CleartextKeysetHandle::Write((keyset_writer)->get(), **keyset_handle);;
+    if (!status.ok()) {
+        SetResult("Error writing keyset");
+        return TCL_ERROR;
+    }
+
+    Tcl_SetObjResult(interp, Tcl_NewStringObj(buffer.str().c_str(), buffer.str().size()));
+    return TCL_OK;
+}
+
 /*
 static int tink_JwtSignAndEncodeCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]) {
     DBG(fprintf(stderr, "JwtSignAndEncodeCmd\n"));
@@ -1260,6 +1410,13 @@ int Tink_Init(Tcl_Interp *interp) {
     Tcl_CreateObjCommand(interp, "::tink::signature::verify", tink_SignatureVerifyCmd, nullptr, nullptr);
     Tcl_CreateObjCommand(interp, "::tink::signature::create_private_keyset", tink_SignatureCreatePrivateKeysetCmd,
                          nullptr, nullptr);
+
+    Tcl_CreateNamespace(interp, "::tink::daead", nullptr, nullptr);
+    Tcl_CreateObjCommand(interp, "::tink::daead::encrypt_deterministically", tink_DeterministicAeadEncryptCmd, nullptr,
+                         nullptr);
+    Tcl_CreateObjCommand(interp, "::tink::daead::decrypt_deterministically", tink_DeterministicAeadDecryptCmd, nullptr,
+                         nullptr);
+    Tcl_CreateObjCommand(interp, "::tink::daead::create_keyset", tink_DaeadCreateKeysetCmd, nullptr, nullptr);
 
     /*
     Tcl_CreateNamespace(interp, "::tink::jwt", nullptr, nullptr);
