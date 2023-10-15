@@ -62,7 +62,7 @@ set hpke_test_private_keyset {{
   }}
 
 
-set new_hybrid_test_private_keyset [::tink::hybrid::create_private_keyset "EciesX25519HkdfHmacSha256Aes256Gcm"]
+set new_hybrid_test_private_keyset [::tink::hybrid::create_private_keyset "ECIES_X25519_HKDF_HMAC_SHA256_AES256_GCM"]
 puts new_hybrid_test_private_keyset=$new_hybrid_test_private_keyset
 set new_hybrid_test_public_keyset [::tink::create_public_keyset $new_hybrid_test_private_keyset]
 puts new_hybrid_test_public_keyset=$new_hybrid_test_public_keyset

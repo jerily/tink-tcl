@@ -45,7 +45,7 @@ puts "verified for modified: [::tink::signature::verify $digital_signature_publi
 ::tink::unregister_keyset $digital_signature_public_keyset_handle
 
 
-set ed25519_private_keyset [::tink::signature::create_private_keyset Ed25519]
+set ed25519_private_keyset [::tink::signature::create_private_keyset ED25519]
 set ed25519_public_keyset [::tink::create_public_keyset $ed25519_private_keyset]
 
 set ed25519_private_keyset_handle [::tink::register_keyset $ed25519_private_keyset]

@@ -26,7 +26,7 @@ puts decrypted=$decrypted
 ::tink::unregister_keyset $keyset_handle
 
 
-set new_keyset [::tink::aead::create_keyset "Aes256Gcm"]
+set new_keyset [::tink::aead::create_keyset "AES256_GCM"]
 puts new_keyset=$new_keyset
 set new_keyset_handle [::tink::register_keyset $new_keyset]
 set new_encrypted [::tink::aead::encrypt $new_keyset_handle $plaintext $associated_data]

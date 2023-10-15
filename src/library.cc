@@ -313,18 +313,17 @@ static int tink_AeadCreateKeysetCmd(ClientData clientData, Tcl_Interp *interp, i
     CheckArgs(2, 2, 1, "aead_key_template");
 
     static const char *aead_key_template_names[] = {
-            "Aes128Eax",
-            "Aes256Eax",
-            "Aes128Gcm",
-            "Aes128GcmNoPrefix",
-            "Aes256Gcm",
-            "Aes256GcmNoPrefix",
-            "Aes128GcmSiv",
-            "Aes256GcmSiv",
-            "Aes128CtrHmacSha256",
-            "Aes256CtrHmacSha256",
-            "XChaCha20Poly1305",
-            "KmsEnvelopeAead",
+            "AES128_EAX",
+            "AES256_EAX",
+            "AES128_GCM",
+            "AES128_GCM_NO_PREFIX",
+            "AES256_GCM",
+            "AES256_GCM_NO_PREFIX",
+            "AES128_GCM_SIV",
+            "AES256_GCM_SIV",
+            "AES128_CTR_HMAC_SHA256",
+            "AES256_CTR_HMAC_SHA256",
+            "XCHACHA20_POLY1305",
             nullptr
     };
 
@@ -339,8 +338,7 @@ static int tink_AeadCreateKeysetCmd(ClientData clientData, Tcl_Interp *interp, i
         Aes256GcmSiv,
         Aes128CtrHmacSha256,
         Aes256CtrHmacSha256,
-        XChaCha20Poly1305,
-        KmsEnvelopeAead
+        XChaCha20Poly1305
     };
 
     int key_template_index;
@@ -384,9 +382,6 @@ static int tink_AeadCreateKeysetCmd(ClientData clientData, Tcl_Interp *interp, i
             break;
         case XChaCha20Poly1305:
             key_template = AeadKeyTemplates::XChaCha20Poly1305();
-            break;
-        case KmsEnvelopeAead:
-//            key_template = AeadKeyTemplates::KmsEnvelopeAead();
             break;
         default:
         SetResult("Unknown aead key template");
@@ -507,11 +502,11 @@ static int tink_MacCreateKeysetCmd(ClientData clientData, Tcl_Interp *interp, in
     CheckArgs(2, 2, 1, "mac_key_template");
 
     static const char *mac_key_template_names[] = {
-            "HmacSha256HalfSizeTag",
-            "HmacSha256",
-            "HmacSha512HalfSizeTag",
-            "HmacSha512",
-            "AesCmac",
+            "HMAC_SHA256_128BITTAG",
+            "HMAC_SHA256",
+            "HMAC_SHA512_256BITTAG",
+            "HMAC_SHA512",
+            "AES_CMAC",
             nullptr
     };
 
@@ -673,24 +668,24 @@ tink_HybridCreatePrivateKeysetCmd(ClientData clientData, Tcl_Interp *interp, int
     CheckArgs(2, 2, 1, "hybrid_key_template");
 
     static const char *hybrid_key_template_names[] = {
-            "EciesP256HkdfHmacSha256Aes128Gcm",
-            "EciesP256HkdfHmacSha512Aes128Gcm",
-            "EciesP256HkdfHmacSha256Aes128GcmCompressedWithoutPrefix",
-            "EciesP256HkdfHmacSha256Aes128CtrHmacSha256",
-            "EciesP256HkdfHmacSha512Aes128CtrHmacSha256",
-            "EciesP256CompressedHkdfHmacSha256Aes128Gcm",
-            "EciesP256CompressedHkdfHmacSha256Aes128CtrHmacSha256",
-            "EciesX25519HkdfHmacSha256Aes128Gcm",
-            "EciesX25519HkdfHmacSha256Aes256Gcm",
-            "EciesX25519HkdfHmacSha256Aes128CtrHmacSha256",
-            "EciesX25519HkdfHmacSha256XChaCha20Poly1305",
-            "EciesX25519HkdfHmacSha256DeterministicAesSiv",
-            "HpkeX25519HkdfSha256Aes128Gcm",
-            "HpkeX25519HkdfSha256Aes128GcmRaw",
-            "HpkeX25519HkdfSha256Aes256Gcm",
-            "HpkeX25519HkdfSha256Aes256GcmRaw",
-            "HpkeX25519HkdfSha256ChaCha20Poly1305",
-            "HpkeX25519HkdfSha256ChaCha20Poly1305Raw",
+            "ECIES_P256_HKDF_HMAC_SHA256_AES128_GCM",
+            "ECIES_P256_HKDF_HMAC_SHA512_AES128_GCM",
+            "ECIES_P256_HKDF_HMAC_SHA256_AES128_GCM_COMPRESSED_NO_PREFIX",
+            "ECIES_P256_HKDF_HMAC_SHA256_AES128_CTR_HMAC_SHA256",
+            "ECIES_P256_HKDF_HMAC_SHA512_AES128_CTR_HMAC_SHA256",
+            "ECIES_P256_COMPRESSED_HKDF_HMAC_SHA256_AES128_GCM",
+            "ECIES_P256_COMPRESSED_HKDF_HMAC_SHA256_AES128_CTR_HMAC_SHA256",
+            "ECIES_X25519_HKDF_HMAC_SHA256_AES128_GCM",
+            "ECIES_X25519_HKDF_HMAC_SHA256_AES256_GCM",
+            "ECIES_X25519_HKDF_HMAC_SHA256_AES128_CTR_HMAC_SHA256",
+            "ECIES_X25519_HKDF_HMAC_SHA256_XCHACHA20_POLY1305",
+            "ECIES_X25519_HKDF_HMAC_SHA256_DETERMINISTIC_AES_SIV",
+            "HPKE_X25519_HKDF_SHA256_AES128_GCM",
+            "HPKE_X25519_HKDF_SHA256_AES128_GCMRAW",
+            "HPKE_X25519_HKDF_SHA256_AES256_GCM",
+            "HPKE_X25519_HKDF_SHA256_AES256_GCM_RAW",
+            "HPKE_X25519_HKDF_SHA256_CHACHA20_POLY1305",
+            "HPKE_X25519_HKDF_SHA256_CHACHA20_POLY1305_RAW",
             nullptr
     };
 
@@ -900,18 +895,18 @@ tink_SignatureCreatePrivateKeysetCmd(ClientData clientData, Tcl_Interp *interp, 
     CheckArgs(2, 2, 1, "signature_key_template");
 
     static const char *signature_key_template_names[] = {
-            "EcdsaP256",
-            "EcdsaP384Sha384",
-            "EcdsaP384Sha512",
-            "EcdsaP521",
-            "EcdsaP256Raw",
-            "RsaSsaPkcs13072Sha256F4",
-            "RsaSsaPkcs14096Sha512F4",
-            "RsaSsaPss3072Sha256Sha256F4",
-            "RsaSsaPss4096Sha512Sha512F4",
-            "RsaSsaPss4096Sha384Sha384F4",
-            "Ed25519",
-            "Ed25519WithRawOutput",
+            "ECDSA_P256",
+            "ECDSA_P384_SHA384",
+            "ECDSA_P384_SHA512",
+            "ECDSA_P521",
+            "ECDSA_P256_RAW",
+            "RSA_SSA_PKCS1_3072_SHA256_F4",
+            "RSA_SSA_PKCS1_4096_SHA512_F4",
+            "RSA_SSA_PSS_3072_SHA256_SHA256_F4",
+            "RSA_SSA_PSS_4096_SHA512_SHA512_F4",
+            "RSA_SSA_PSS_4096_SHA384_SHA384_F4",
+            "ED25519",
+            "ED25519_WITH_RAW_OUTPUT",
             nullptr
     };
 

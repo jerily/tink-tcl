@@ -23,7 +23,7 @@ set verified [::tink::mac::verify $hmac_keyset_handle $tag $content]
 puts verified=$verified
 ::tink::unregister_keyset $hmac_keyset_handle
 
-set new_hmac_keyset [::tink::mac::create_keyset "HmacSha256"]
+set new_hmac_keyset [::tink::mac::create_keyset "HMAC_SHA256"]
 set new_hmac_keyset_handle [::tink::register_keyset $new_hmac_keyset]
 set new_tag [::tink::mac::compute $new_hmac_keyset_handle $content]
 #puts new_mac,authentication_tag=$new_tag
