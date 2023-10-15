@@ -27,7 +27,7 @@ message(STATUS "ABSL_LIBRARY_DIRS: ${ABSL_LIBRARY_DIRS}")
 #set(CMAKE_VERBOSE_MAKEFILE ON)
 set(CMAKE_CXX_FLAGS "-DTCL_THREADS -DPROJECT_VERSION=${PROJECT_VERSION} ${CMAKE_CXX_FLAGS}")
 
-add_library(tink-tcl MODULE
+add_library(tink-tcl SHARED
         src/library.cc
 )
 
