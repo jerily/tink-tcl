@@ -23,10 +23,10 @@
 #include <tink/public_key_sign.h>
 #include <tink/public_key_verify.h>
 #include <tink/signature_key_templates.h>
-//#include <tink/jwt/jwt_public_key_sign.h>
-//#include <tink/jwt/jwt_public_key_verify.h>
-//#include <tink/jwt/jwt_validator.h>
-//#include <tink/jwt/jwk_set_converter.h>
+#include <tink/jwt/jwt_public_key_sign.h>
+#include <tink/jwt/jwt_public_key_verify.h>
+#include <tink/jwt/jwt_validator.h>
+#include <tink/jwt/jwk_set_converter.h>
 #include "library.h"
 
 #define XSTR(s) STR(s)
@@ -67,14 +67,14 @@ using crypto::tink::PublicKeyVerify;
 using crypto::tink::SignatureKeyTemplates;
 using crypto::tink::DeterministicAead;
 using crypto::tink::DeterministicAeadKeyTemplates;
-//using ::crypto::tink::RawJwt;
-//using ::crypto::tink::RawJwtBuilder;
-//using ::crypto::tink::JwtPublicKeySign;
-//using ::crypto::tink::JwtPublicKeyVerify;
-//using ::crypto::tink::JwtValidator;
-//using ::crypto::tink::VerifiedJwt;
-//using ::crypto::tink::JwkSetFromPublicKeysetHandle;
-//using ::crypto::tink::JwkSetToPublicKeysetHandle;
+using ::crypto::tink::RawJwt;
+using ::crypto::tink::RawJwtBuilder;
+using ::crypto::tink::JwtPublicKeySign;
+using ::crypto::tink::JwtPublicKeyVerify;
+using ::crypto::tink::JwtValidator;
+using ::crypto::tink::VerifiedJwt;
+using ::crypto::tink::JwkSetFromPublicKeysetHandle;
+using ::crypto::tink::JwkSetToPublicKeysetHandle;
 
 static int tink_ModuleInitialized;
 
@@ -1152,7 +1152,6 @@ static int tink_DaeadCreateKeysetCmd(ClientData clientData, Tcl_Interp *interp, 
     return TCL_OK;
 }
 
-/*
 static int tink_JwtSignAndEncodeCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]) {
     DBG(fprintf(stderr, "JwtSignAndEncodeCmd\n"));
     CheckArgs(3, 3, 1, "keyset_handle jwt_dict");
@@ -1352,7 +1351,6 @@ static int tink_JwkSetFromPublicKeysetCmd(ClientData clientData, Tcl_Interp *int
     Tcl_SetObjResult(interp, Tcl_NewStringObj(public_jwk_set.value().c_str(), public_jwk_set.value().size()));
     return TCL_OK;
 }
-*/
 
 static void tink_ExitHandler(ClientData unused) {
     Tcl_MutexLock(&tink_KeysetNameToInternal_HT_Mutex);
@@ -1418,14 +1416,12 @@ int Tink_Init(Tcl_Interp *interp) {
                          nullptr);
     Tcl_CreateObjCommand(interp, "::tink::daead::create_keyset", tink_DaeadCreateKeysetCmd, nullptr, nullptr);
 
-    /*
     Tcl_CreateNamespace(interp, "::tink::jwt", nullptr, nullptr);
     Tcl_CreateObjCommand(interp, "::tink::jwt::sign_and_encode", tink_JwtSignAndEncodeCmd, nullptr, nullptr);
     Tcl_CreateObjCommand(interp, "::tink::jwt::verify_and_decode", tink_JwtVerifyAndDecodeCmd, nullptr, nullptr);
     Tcl_CreateObjCommand(interp, "::tink::jwt::jwk_set_to_public_keyset", tink_JwkSetToPublicKeysetCmd, nullptr,
                          nullptr);
     Tcl_CreateObjCommand(interp, "::tink::jwt::public_keyset_to_jwk_set", tink_JwkSetFromPublicKeysetCmd, nullptr, nullptr);
-    */
 
     return Tcl_PkgProvide(interp, "tink", XSTR(PROJECT_VERSION));
 }
