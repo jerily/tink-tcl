@@ -1,6 +1,6 @@
 diff -ur tink-cc-2.0.0/cmake/TinkWorkspace.cmake tink-cc/cmake/TinkWorkspace.cmake
 --- tink-cc-2.0.0/cmake/TinkWorkspace.cmake	2023-04-27 03:16:23.000000000 -0400
-+++ tink-cc/cmake/TinkWorkspace.cmake	2023-10-14 03:40:17.488897930 -0400
++++ tink-cc/cmake/TinkWorkspace.cmake	2023-10-15 12:05:22.037038277 -0400
 @@ -95,6 +95,7 @@
  # defined.
  if (NOT TARGET crypto)
@@ -19,7 +19,7 @@ diff -ur tink-cc-2.0.0/cmake/TinkWorkspace.cmake tink-cc/cmake/TinkWorkspace.cma
      # Support for ED25519 was added from 1.1.1.
      find_package(OpenSSL 1.1.1 EXACT REQUIRED)
      _create_interface_target(crypto OpenSSL::Crypto)
-@@ -123,21 +126,31 @@
+@@ -123,21 +126,29 @@
  set(RAPIDJSON_BUILD_EXAMPLES OFF CACHE BOOL "Tink dependency override" FORCE)
  set(RAPIDJSON_BUILD_TESTS OFF CACHE BOOL "Tink dependency override" FORCE)
  
@@ -54,7 +54,6 @@ diff -ur tink-cc-2.0.0/cmake/TinkWorkspace.cmake tink-cc/cmake/TinkWorkspace.cma
 -  CMAKE_SUBDIR cmake
 -)
 +if(NOT TINK_USE_INSTALLED_PROTOBUF)
-+  set(BUILD_SHARED_LIBS OFF)
 +  ## Use protobuf X.21.9.
 +  http_archive(
 +    NAME com_google_protobuf
@@ -62,13 +61,12 @@ diff -ur tink-cc-2.0.0/cmake/TinkWorkspace.cmake tink-cc/cmake/TinkWorkspace.cma
 +    SHA256 5babb8571f1cceafe0c18e13ddb3be556e87e12ceea3463d6b0d0064e6cc1ac3
 +    CMAKE_SUBDIR cmake
 +  )
-+  set(BUILD_SHARED_LIBS ON)
 +else()
 +  find_package(Protobuf REQUIRED)
 +endif()
 diff -ur tink-cc-2.0.0/CMakeLists.txt tink-cc/CMakeLists.txt
 --- tink-cc-2.0.0/CMakeLists.txt	2023-04-27 03:16:23.000000000 -0400
-+++ tink-cc/CMakeLists.txt	2023-10-12 03:27:57.749763462 -0400
++++ tink-cc/CMakeLists.txt	2023-10-15 12:03:38.093719299 -0400
 @@ -1,5 +1,14 @@
  cmake_minimum_required(VERSION 3.13)
 -project(Tink VERSION 2.0.0 LANGUAGES CXX)
@@ -129,10 +127,9 @@ diff -ur tink-cc-2.0.0/CMakeLists.txt tink-cc/CMakeLists.txt
 +#  )
 +endif()
 \ No newline at end of file
-Only in tink-cc: install
 diff -ur tink-cc-2.0.0/tink/CMakeLists.txt tink-cc/tink/CMakeLists.txt
 --- tink-cc-2.0.0/tink/CMakeLists.txt	2023-04-27 03:16:23.000000000 -0400
-+++ tink-cc/tink/CMakeLists.txt	2023-10-12 03:27:57.749763462 -0400
++++ tink-cc/tink/CMakeLists.txt	2023-10-15 12:03:38.093719299 -0400
 @@ -24,9 +24,7 @@
  
  set(TINK_VERSION_H "${TINK_GENFILE_DIR}/tink/version.h")
@@ -204,3 +201,27 @@ diff -ur tink-cc-2.0.0/tink/CMakeLists.txt tink-cc/tink/CMakeLists.txt
  tink_cc_library(
    NAME configuration
    SRCS
+diff -ur tink-cc-2.0.0/tink/internal/CMakeLists.txt tink-cc/tink/internal/CMakeLists.txt
+--- tink-cc-2.0.0/tink/internal/CMakeLists.txt	2023-04-27 03:16:23.000000000 -0400
++++ tink-cc/tink/internal/CMakeLists.txt	2023-10-15 12:04:23.419190867 -0400
+@@ -234,7 +234,7 @@
+   DEPS
+     tink::internal::key_info
+     gmock
+-    protobuf::libprotobuf-lite
++    protobuf::libprotobuf
+     tink::proto::tink_cc_proto
+ )
+ 
+diff -ur tink-cc-2.0.0/tink/util/CMakeLists.txt tink-cc/tink/util/CMakeLists.txt
+--- tink-cc-2.0.0/tink/util/CMakeLists.txt	2023-04-27 03:16:23.000000000 -0400
++++ tink-cc/tink/util/CMakeLists.txt	2023-10-15 12:04:07.474677908 -0400
+@@ -225,7 +225,7 @@
+   SRCS
+     protobuf_helper.h
+   DEPS
+-    protobuf::libprotobuf-lite
++    protobuf::libprotobuf
+ )
+ 
+ tink_cc_library(

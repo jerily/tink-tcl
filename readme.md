@@ -35,6 +35,24 @@ make
 make install
 ```
 
+### protobuf
+```bash
+wget https://github.com/protocolbuffers/protobuf/archive/v21.9.zip
+unzip v21.9.zip -d .
+cd protobuf-21.9
+mkdir build
+cd build
+cmake .. \
+-DBUILD_SHARED_LIBS=ON \
+-DCMAKE_BUILD_TYPE=Release \
+-Dprotobuf_BUILD_TESTS=OFF \
+-DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+-Dprotobuf_BUILD_SHARED_LIBS=ON -DCMAKE_CXX_FLAGS="-fPIC" \
+-DCMAKE_INSTALL_PREFIX=/usr/local
+make
+make install
+```
+
 ### tink
 ```
 wget https://github.com/tink-crypto/tink-cc/archive/refs/tags/v2.0.0.tar.gz
@@ -47,8 +65,9 @@ cmake .. \
   -DTINK_BUILD_SHARED_LIB=ON \
   -DTINK_USE_INSTALLED_ABSEIL=ON \
   -DTINK_USE_SYSTEM_OPENSSL=OFF \
-  -DTINK_USE_INSTALLED_PROTOBUF=OFF \
+  -DTINK_USE_INSTALLED_PROTOBUF=ON \
   -DTINK_USE_INSTALLED_RAPIDJSON=OFF \
+  -DTINK_BUILD_TESTS=OFF
   -DCMAKE_SKIP_RPATH=ON \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_INSTALL_PREFIX=/usr/local
