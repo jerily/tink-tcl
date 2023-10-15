@@ -1,3 +1,3 @@
 set dir [file dirname [info script]]
 
-package ifneeded tink @PROJECT_VERSION@ [list load [file join $dir libtink-tcl.so]]
+package ifneeded tink @PROJECT_VERSION@ [list load [file join $dir libtink-tcl[info sharedlibextension]]]
