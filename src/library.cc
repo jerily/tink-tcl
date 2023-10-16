@@ -77,6 +77,8 @@ using ::crypto::tink::VerifiedJwt;
 using ::crypto::tink::JwkSetFromPublicKeysetHandle;
 using ::crypto::tink::JwkSetToPublicKeysetHandle;
 using ::crypto::tink::JwtSignatureRegister;
+using ::crypto::tink::JwtValidatorBuilder;
+
 static int tink_ModuleInitialized;
 
 static Tcl_HashTable tink_KeysetNameToInternal_HT;
@@ -1179,41 +1181,129 @@ static int tink_JwtSignAndEncodeCmd(ClientData clientData, Tcl_Interp *interp, i
         return TCL_ERROR;
     }
 
+    RawJwtBuilder builder = RawJwtBuilder();
+
     Tcl_Obj *audiencePtr;
     Tcl_Obj *audienceKeyPtr = Tcl_NewStringObj("audience", -1);
     Tcl_IncrRefCount(audienceKeyPtr);
     if (TCL_OK != Tcl_DictObjGet(interp, objv[2], audienceKeyPtr, &audiencePtr)) {
         Tcl_DecrRefCount(audienceKeyPtr);
-        SetResult("invalid jwt_dict");
+        SetResult("error reading dict");
         return TCL_ERROR;
     }
     Tcl_DecrRefCount(audienceKeyPtr);
 
-    int audience_length;
-    const char *audience = Tcl_GetStringFromObj(audiencePtr, &audience_length);
+    if (audiencePtr) {
+        int audience_length;
+        const char *audience = Tcl_GetStringFromObj(audiencePtr, &audience_length);
+        builder.SetAudience(audience);
+    }
 
     Tcl_Obj *expirySecondsPtr;
     Tcl_Obj *expirySecondsKeyPtr = Tcl_NewStringObj("expirySeconds", -1);
     Tcl_IncrRefCount(expirySecondsKeyPtr);
     if (TCL_OK != Tcl_DictObjGet(interp, objv[2], expirySecondsKeyPtr, &expirySecondsPtr)) {
         Tcl_DecrRefCount(expirySecondsKeyPtr);
-        SetResult("invalid jwt_dict");
+        SetResult("error reading dict");
         return TCL_ERROR;
     }
     Tcl_DecrRefCount(expirySecondsKeyPtr);
 
-    long expirySeconds;
-    if (TCL_OK != Tcl_GetLongFromObj(interp, expirySecondsPtr, &expirySeconds) || expirySeconds < 0) {
-        SetResult("expiry seconds must be a long integer >= 0");
-        return TCL_ERROR;
+    if (expirySecondsPtr) {
+        long expirySeconds;
+        if (TCL_OK != Tcl_GetLongFromObj(interp, expirySecondsPtr, &expirySeconds) || expirySeconds < 0) {
+            SetResult("expiry seconds must be a long integer >= 0");
+            return TCL_ERROR;
+        }
+        builder.SetExpiration(absl::Now() + absl::Seconds(expirySeconds));
     }
 
-    // TODO: more info, claims etc
-    absl::StatusOr<RawJwt> raw_jwt =
-            RawJwtBuilder()
-                    .AddAudience(audience)
-                    .SetExpiration(absl::Now() + absl::Seconds(expirySeconds))
-                    .Build();
+    Tcl_Obj *issuerPtr;
+    Tcl_Obj *issuerKeyPtr = Tcl_NewStringObj("issuer", -1);
+    Tcl_IncrRefCount(issuerKeyPtr);
+    if (TCL_OK != Tcl_DictObjGet(interp, objv[2], issuerKeyPtr, &issuerPtr)) {
+        Tcl_DecrRefCount(issuerKeyPtr);
+        SetResult("error reading dict");
+        return TCL_ERROR;
+    }
+    Tcl_DecrRefCount(issuerKeyPtr);
+
+    if (issuerPtr) {
+        int issuer_length;
+        const char *issuer = Tcl_GetStringFromObj(issuerPtr, &issuer_length);
+        builder.SetIssuer(issuer);
+    }
+
+    Tcl_Obj *subjectPtr;
+    Tcl_Obj *subjectKeyPtr = Tcl_NewStringObj("subject", -1);
+    Tcl_IncrRefCount(subjectKeyPtr);
+    if (TCL_OK != Tcl_DictObjGet(interp, objv[2], subjectKeyPtr, &subjectPtr)) {
+        Tcl_DecrRefCount(subjectKeyPtr);
+        SetResult("error reading dict");
+        return TCL_ERROR;
+    }
+    Tcl_DecrRefCount(subjectKeyPtr);
+
+    if (subjectPtr) {
+        int subject_length;
+        const char *subject = Tcl_GetStringFromObj(subjectPtr, &subject_length);
+        builder.SetSubject(subject);
+    }
+
+    Tcl_Obj *jwtIdPtr;
+    Tcl_Obj *jwtIdKeyPtr = Tcl_NewStringObj("jwt_id", -1);
+    Tcl_IncrRefCount(jwtIdKeyPtr);
+    if (TCL_OK != Tcl_DictObjGet(interp, objv[2], jwtIdKeyPtr, &jwtIdPtr)) {
+        Tcl_DecrRefCount(jwtIdKeyPtr);
+        SetResult("error reading dict");
+        return TCL_ERROR;
+    }
+    Tcl_DecrRefCount(jwtIdKeyPtr);
+
+    if (jwtIdPtr) {
+        int jwtId_length;
+        const char *jwtId = Tcl_GetStringFromObj(jwtIdPtr, &jwtId_length);
+        builder.SetJwtId(jwtId);
+    }
+
+
+    Tcl_Obj *claimsPtr;
+    Tcl_Obj *claimsKeyPtr = Tcl_NewStringObj("claims", -1);
+    Tcl_IncrRefCount(claimsKeyPtr);
+    if (TCL_OK != Tcl_DictObjGet(interp, objv[2], claimsKeyPtr, &claimsPtr)) {
+        Tcl_DecrRefCount(claimsKeyPtr);
+        SetResult("error reading dict");
+        return TCL_ERROR;
+    }
+    Tcl_DecrRefCount(claimsKeyPtr);
+
+    if (claimsPtr) {
+        int claims_length;
+        if (TCL_OK != Tcl_ListObjLength(interp, claimsPtr, &claims_length) || claims_length % 2 != 0) {
+            SetResult("error reading claims, list length must be even");
+            return TCL_ERROR;
+        }
+
+        for (int i = 0; i < claims_length; i += 2) {
+            Tcl_Obj *keyPtr;
+            Tcl_Obj *valuePtr;
+            if (TCL_OK != Tcl_ListObjIndex(interp, claimsPtr, i, &keyPtr) ||
+                TCL_OK != Tcl_ListObjIndex(interp, claimsPtr, i + 1, &valuePtr)) {
+                SetResult("error reading claims");
+                return TCL_ERROR;
+            }
+
+            int key_length;
+            const char *key = Tcl_GetStringFromObj(keyPtr, &key_length);
+
+            int value_length;
+            const char *value = Tcl_GetStringFromObj(valuePtr, &value_length);
+
+            builder.AddStringClaim(key, value);
+        }
+    }
+
+    absl::StatusOr<RawJwt> raw_jwt = builder.Build();
 
     absl::StatusOr<std::string> token =
             (*jwt_signer)->SignAndEncode(*raw_jwt);
@@ -1258,7 +1348,8 @@ static int tink_JwtVerifyAndDecodeCmd(ClientData clientData, Tcl_Interp *interp,
     const unsigned char *token = Tcl_GetByteArrayFromObj(objv[2], &token_length);
     absl::StatusOr<std::string> token_str = std::string((const char *) token, token_length);
 
-    // TODO: get more info
+    JwtValidatorBuilder builder = JwtValidatorBuilder();
+
     Tcl_Obj *audiencePtr;
     Tcl_Obj *audienceKeyPtr = Tcl_NewStringObj("audience", -1);
     Tcl_IncrRefCount(audienceKeyPtr);
@@ -1269,13 +1360,30 @@ static int tink_JwtVerifyAndDecodeCmd(ClientData clientData, Tcl_Interp *interp,
     }
     Tcl_DecrRefCount(audienceKeyPtr);
 
-    int audience_length;
-    const char *audience = Tcl_GetStringFromObj(audiencePtr, &audience_length);
+    if (audiencePtr) {
+        int audience_length;
+        const char *audience = Tcl_GetStringFromObj(audiencePtr, &audience_length);
+        builder.ExpectAudience(audience);
+    }
 
-    absl::StatusOr<JwtValidator> validator =
-            crypto::tink::JwtValidatorBuilder()
-                .ExpectAudience(audience)
-                .Build();
+    Tcl_Obj *issuerPtr;
+    Tcl_Obj *issuerKeyPtr = Tcl_NewStringObj("issuer", -1);
+    Tcl_IncrRefCount(issuerKeyPtr);
+    if (TCL_OK != Tcl_DictObjGet(interp, objv[3], issuerKeyPtr, &issuerPtr)) {
+        Tcl_DecrRefCount(issuerKeyPtr);
+        SetResult("invalid validator_dict");
+        return TCL_ERROR;
+    }
+    Tcl_DecrRefCount(issuerKeyPtr);
+
+    if (issuerPtr) {
+        int issuer_length;
+        const char *issuer = Tcl_GetStringFromObj(issuerPtr, &issuer_length);
+        builder.ExpectIssuer(issuer);
+    }
+
+    absl::StatusOr<JwtValidator> validator = builder.Build();
+
     if (!validator.ok()) {
         SetResult("error creating validator");
         return TCL_ERROR;

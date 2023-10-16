@@ -33,7 +33,14 @@ set jwt_signature_public_keyset {{
  }}
 
 set private_keyset_handle [::tink::register_keyset $jwt_signature_private_keyset]
-set payload [dict create audience "aud" issuer "iss" subject "sub" jwt_id "jti" expirySeconds 1234567890]
+set payload [dict create \
+    audience "aud" \
+    issuer "iss" \
+    subject "sub" \
+    jwt_id "jti" \
+    expirySeconds 1234567890 \
+    claims [list claim1 value1 claim2 value2]]
+
 set token [::tink::jwt::sign_and_encode $private_keyset_handle $payload]
 puts token=$token
 
@@ -41,7 +48,7 @@ puts token=$token
 #puts public_jwk_set=$public_jwk_set
 
 set public_keyset_handle [::tink::register_keyset $jwt_signature_public_keyset]
-set validator_dict [dict create audience "aud"]
+set validator_dict [dict create audience "aud" issuer "iss"]
 set verified [::tink::jwt::verify_and_decode $public_keyset_handle $token $validator_dict]
 puts verified=$verified
 
