@@ -29,6 +29,7 @@
 #include <tink/jwt/jwk_set_converter.h>
 #include <tink/jwt/jwt_signature_config.h>
 #include <tink/jwt/jwt_key_templates.h>
+#include <tink/jwt/jwt_mac_config.h>
 #include "library.h"
 
 #define XSTR(s) STR(s)
@@ -79,6 +80,7 @@ using ::crypto::tink::JwkSetFromPublicKeysetHandle;
 using ::crypto::tink::JwkSetToPublicKeysetHandle;
 using ::crypto::tink::JwtSignatureRegister;
 using ::crypto::tink::JwtValidatorBuilder;
+using ::crypto::tink::JwtMacRegister;
 
 static int tink_ModuleInitialized;
 
@@ -1669,6 +1671,11 @@ void tink_InitModule() {
         auto jwt_status = JwtSignatureRegister();
         if (!jwt_status.ok()) {
             std::cerr << "JwtSignatureRegister() failed " << std::endl;
+        }
+
+        auto jwt_mac_status = JwtMacRegister();
+        if (!jwt_mac_status.ok()) {
+            std::cerr << "JwtMacRegister() failed " << std::endl;
         }
 
         Tcl_MutexLock(&tink_KeysetNameToInternal_HT_Mutex);

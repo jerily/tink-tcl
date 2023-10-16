@@ -58,7 +58,7 @@ puts verified=$verified
 # Creating jwt keyset
 
 set jwt_keyset [::tink::jwt::create_private_keyset "PS512_4096_F4"]
-puts hs256,keyset=$jwt_keyset
+puts keyset=$jwt_keyset
 set jwt_keyset_handle [::tink::register_keyset $jwt_keyset]
 
 set payload [dict create \

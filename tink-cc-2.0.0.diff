@@ -1,6 +1,6 @@
 diff -ur tink-cc-2.0.0/cmake/TinkWorkspace.cmake tink-cc/cmake/TinkWorkspace.cmake
 --- tink-cc-2.0.0/cmake/TinkWorkspace.cmake	2023-04-27 03:16:23.000000000 -0400
-+++ tink-cc/cmake/TinkWorkspace.cmake	2023-10-15 15:55:47.756726497 -0400
++++ tink-cc/cmake/TinkWorkspace.cmake	2023-10-16 03:28:12.513460588 -0400
 @@ -95,6 +95,7 @@
  # defined.
  if (NOT TARGET crypto)
@@ -64,10 +64,9 @@ diff -ur tink-cc-2.0.0/cmake/TinkWorkspace.cmake tink-cc/cmake/TinkWorkspace.cma
 +else()
 +  find_package(Protobuf REQUIRED)
 +endif()
-Only in tink-cc: cmake-build-debug
 diff -ur tink-cc-2.0.0/CMakeLists.txt tink-cc/CMakeLists.txt
 --- tink-cc-2.0.0/CMakeLists.txt	2023-04-27 03:16:23.000000000 -0400
-+++ tink-cc/CMakeLists.txt	2023-10-15 15:55:47.752726390 -0400
++++ tink-cc/CMakeLists.txt	2023-10-16 03:28:12.513460588 -0400
 @@ -1,5 +1,14 @@
  cmake_minimum_required(VERSION 3.13)
 -project(Tink VERSION 2.0.0 LANGUAGES CXX)
@@ -130,7 +129,7 @@ diff -ur tink-cc-2.0.0/CMakeLists.txt tink-cc/CMakeLists.txt
 \ No newline at end of file
 diff -ur tink-cc-2.0.0/tink/CMakeLists.txt tink-cc/tink/CMakeLists.txt
 --- tink-cc-2.0.0/tink/CMakeLists.txt	2023-04-27 03:16:23.000000000 -0400
-+++ tink-cc/tink/CMakeLists.txt	2023-10-15 16:25:05.675074406 -0400
++++ tink-cc/tink/CMakeLists.txt	2023-10-16 03:28:58.082615731 -0400
 @@ -24,9 +24,7 @@
  
  set(TINK_VERSION_H "${TINK_GENFILE_DIR}/tink/version.h")
@@ -142,7 +141,7 @@ diff -ur tink-cc-2.0.0/tink/CMakeLists.txt tink-cc/tink/CMakeLists.txt
      aead.h
      aead_config.h
      aead_factory.h
-@@ -72,8 +70,17 @@
+@@ -72,8 +70,18 @@
      streaming_aead_key_templates.h
      streaming_mac.h
      tink_config.h
@@ -154,6 +153,7 @@ diff -ur tink-cc-2.0.0/tink/CMakeLists.txt tink-cc/tink/CMakeLists.txt
 +        jwt/jwt_validator.h
 +        jwt/raw_jwt.h
 +        jwt/jwk_set_converter.h
++	jwt/jwt_mac_config.h
      "${TINK_VERSION_H}"
 -  DEPS
 +)
@@ -161,7 +161,7 @@ diff -ur tink-cc-2.0.0/tink/CMakeLists.txt tink-cc/tink/CMakeLists.txt
      tink::core::aead
      tink::core::binary_keyset_reader
      tink::core::binary_keyset_writer
-@@ -138,6 +145,22 @@
+@@ -138,6 +146,23 @@
      tink::util::validation
      tink::proto::config_cc_proto
      tink::proto::tink_cc_proto
@@ -173,6 +173,7 @@ diff -ur tink-cc-2.0.0/tink/CMakeLists.txt tink-cc/tink/CMakeLists.txt
 +        tink::jwt::jwt_validator
 +        tink::jwt::raw_jwt
 +        tink::jwt::jwk_set_converter
++	tink::jwt::jwt_mac_config
 +)
 +
 +tink_cc_library(
@@ -184,7 +185,7 @@ diff -ur tink-cc-2.0.0/tink/CMakeLists.txt tink-cc/tink/CMakeLists.txt
    PUBLIC
  )
  
-@@ -1050,6 +1073,42 @@
+@@ -1050,6 +1075,42 @@
      tink::util::test_matchers
  )
  
@@ -229,7 +230,7 @@ diff -ur tink-cc-2.0.0/tink/CMakeLists.txt tink-cc/tink/CMakeLists.txt
    SRCS
 diff -ur tink-cc-2.0.0/tink/internal/CMakeLists.txt tink-cc/tink/internal/CMakeLists.txt
 --- tink-cc-2.0.0/tink/internal/CMakeLists.txt	2023-04-27 03:16:23.000000000 -0400
-+++ tink-cc/tink/internal/CMakeLists.txt	2023-10-15 15:55:47.756726497 -0400
++++ tink-cc/tink/internal/CMakeLists.txt	2023-10-16 03:28:12.513460588 -0400
 @@ -234,7 +234,7 @@
    DEPS
      tink::internal::key_info
@@ -241,7 +242,7 @@ diff -ur tink-cc-2.0.0/tink/internal/CMakeLists.txt tink-cc/tink/internal/CMakeL
  
 diff -ur tink-cc-2.0.0/tink/util/CMakeLists.txt tink-cc/tink/util/CMakeLists.txt
 --- tink-cc-2.0.0/tink/util/CMakeLists.txt	2023-04-27 03:16:23.000000000 -0400
-+++ tink-cc/tink/util/CMakeLists.txt	2023-10-15 15:55:47.756726497 -0400
++++ tink-cc/tink/util/CMakeLists.txt	2023-10-16 03:28:12.513460588 -0400
 @@ -225,7 +225,7 @@
    SRCS
      protobuf_helper.h
