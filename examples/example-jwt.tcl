@@ -54,3 +54,26 @@ puts verified=$verified
 
 ::tink::unregister_keyset $private_keyset_handle
 ::tink::unregister_keyset $public_keyset_handle
+
+# Creating jwt keyset
+
+set jwt_keyset [::tink::jwt::create_private_keyset "PS512_4096_F4"]
+puts hs256,keyset=$jwt_keyset
+set jwt_keyset_handle [::tink::register_keyset $jwt_keyset]
+
+set payload [dict create \
+    audience "aud" \
+    issuer "iss" \
+    subject "sub" \
+    jwt_id "jti" \
+    expirySeconds 1234567890 \
+    claims [list claim1 value1 claim2 value2]]
+
+set token [::tink::jwt::sign_and_encode $jwt_keyset_handle $payload]
+puts hs256,token=$token
+
+set jwt_public_keyset [::tink::create_public_keyset $jwt_keyset]
+set jwt_public_keyset_handle [::tink::register_keyset $jwt_public_keyset]
+set validator_dict [dict create audience "aud" issuer "iss"]
+set verified [::tink::jwt::verify_and_decode $jwt_public_keyset_handle $token $validator_dict]
+puts verified=$verified

@@ -28,6 +28,7 @@
 #include <tink/jwt/jwt_validator.h>
 #include <tink/jwt/jwk_set_converter.h>
 #include <tink/jwt/jwt_signature_config.h>
+#include <tink/jwt/jwt_key_templates.h>
 #include "library.h"
 
 #define XSTR(s) STR(s)
@@ -1100,27 +1101,27 @@ static int tink_DeterministicAeadDecryptCmd(ClientData clientData, Tcl_Interp *i
 }
 
 static int tink_DaeadCreateKeysetCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]) {
-    DBG(fprintf(stderr, "AeadCreateKeysetCmd\n"));
+    DBG(fprintf(stderr, "DaeadCreateKeysetCmd\n"));
     CheckArgs(2, 2, 1, "deterministic_aead_key_template");
 
-    static const char *aead_key_template_names[] = {
+    static const char *daead_key_template_names[] = {
             "AES256_SIV",
             nullptr
     };
 
-    enum aead_key_templates {
+    enum daead_key_templates {
         Aes256Siv
     };
 
     int key_template_index;
     if (TCL_OK !=
-        Tcl_GetIndexFromObj(interp, objv[1], aead_key_template_names, "aead key template", 0, &key_template_index)) {
-        SetResult("Unknown aead key template");
+        Tcl_GetIndexFromObj(interp, objv[1], daead_key_template_names, "daead key template", 0, &key_template_index)) {
+        SetResult("Unknown daead key template");
         return TCL_ERROR;
     }
 
     KeyTemplate key_template;
-    switch ((enum aead_key_templates) key_template_index) {
+    switch ((enum daead_key_templates) key_template_index) {
         case Aes256Siv:
             key_template = DeterministicAeadKeyTemplates::Aes256Siv();
             break;
@@ -1461,6 +1462,197 @@ static int tink_JwkSetFromPublicKeysetCmd(ClientData clientData, Tcl_Interp *int
     return TCL_OK;
 }
 
+static int tink_JwtCreatePrivateKeysetCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]) {
+    DBG(fprintf(stderr, "JwtCreateKeysetCmd\n"));
+    CheckArgs(2, 2, 1, "jwt_key_template");
+
+    static const char *jwt_key_template_names[] = {
+            "HS256",
+            "RAW_HS256",
+            "HS384",
+            "RAW_HS384",
+            "HS512",
+            "RAW_HS512",
+            "ES256",
+            "RAW_ES256",
+            "ES384",
+            "RAW_ES384",
+            "ES512",
+            "RAW_ES512",
+            "RS256_2048_F4",
+            "RAW_RS256_2048_F4",
+            "RS256_3072_F4",
+            "RAW_RS256_3072_F4",
+            "RS384_3072_F4",
+            "RAW_RS384_3072_F4",
+            "RS512_4096_F4",
+            "RAW_RS512_4096_F4",
+            "PS256_2048_F4",
+            "RAW_PS256_2048_F4",
+            "PS256_3072_F4",
+            "RAW_PS256_3072_F4",
+            "PS384_3072_F4",
+            "RAW_PS384_3072_F4",
+            "PS512_4096_F4",
+            "RAW_PS512_4096_F4",
+            nullptr
+    };
+
+    enum jwt_key_templates {
+        JwtHs256,
+        RawJwtHs256,
+        JwtHs384,
+        RawJwtHs384,
+        JwtHs512,
+        RawJwtHs512,
+        JwtEs256,
+        RawJwtEs256,
+        JwtEs384,
+        RawJwtEs384,
+        JwtEs512,
+        RawJwtEs512,
+        JwtRs256_2048_F4,
+        RawJwtRs256_2048_F4,
+        JwtRs256_3072_F4,
+        RawJwtRs256_3072_F4,
+        JwtRs384_3072_F4,
+        RawJwtRs384_3072_F4,
+        JwtRs512_4096_F4,
+        RawJwtRs512_4096_F4,
+        JwtPs256_2048_F4,
+        RawJwtPs256_2048_F4,
+        JwtPs256_3072_F4,
+        RawJwtPs256_3072_F4,
+        JwtPs384_3072_F4,
+        RawJwtPs384_3072_F4,
+        JwtPs512_4096_F4,
+        RawJwtPs512_4096_F4
+    };
+
+    int key_template_index;
+    if (TCL_OK !=
+        Tcl_GetIndexFromObj(interp, objv[1], jwt_key_template_names, "jwt key template", 0, &key_template_index)) {
+        SetResult("Unknown jwt key template");
+        return TCL_ERROR;
+    }
+
+    KeyTemplate key_template;
+    switch ((enum jwt_key_templates) key_template_index) {
+        case JwtHs256:
+            key_template = ::crypto::tink::JwtHs256Template();
+            break;
+        case RawJwtHs256:
+            key_template = ::crypto::tink::RawJwtHs256Template();
+            break;
+        case JwtHs384:
+            key_template = ::crypto::tink::JwtHs384Template();
+            break;
+        case RawJwtHs384:
+            key_template = ::crypto::tink::RawJwtHs384Template();
+            break;
+        case JwtHs512:
+            key_template = ::crypto::tink::JwtHs512Template();
+            break;
+        case RawJwtHs512:
+            key_template = ::crypto::tink::RawJwtHs512Template();
+            break;
+        case JwtEs256:
+            key_template = ::crypto::tink::JwtEs256Template();
+            break;
+        case RawJwtEs256:
+            key_template = ::crypto::tink::RawJwtEs256Template();
+            break;
+        case JwtEs384:
+            key_template = ::crypto::tink::JwtEs384Template();
+            break;
+        case RawJwtEs384:
+            key_template = ::crypto::tink::RawJwtEs384Template();
+            break;
+        case JwtEs512:
+            key_template = ::crypto::tink::JwtEs512Template();
+            break;
+        case RawJwtEs512:
+            key_template = ::crypto::tink::RawJwtEs512Template();
+            break;
+        case JwtRs256_2048_F4:
+            key_template = ::crypto::tink::JwtRs256_2048_F4_Template();
+            break;
+        case RawJwtRs256_2048_F4:
+            key_template = ::crypto::tink::RawJwtRs256_2048_F4_Template();
+            break;
+        case JwtRs256_3072_F4:
+            key_template = ::crypto::tink::JwtRs256_3072_F4_Template();
+            break;
+        case RawJwtRs256_3072_F4:
+            key_template = ::crypto::tink::RawJwtRs256_3072_F4_Template();
+            break;
+        case JwtRs384_3072_F4:
+            key_template = ::crypto::tink::JwtRs384_3072_F4_Template();
+            break;
+        case RawJwtRs384_3072_F4:
+            key_template = ::crypto::tink::RawJwtRs384_3072_F4_Template();
+            break;
+        case JwtRs512_4096_F4:
+            key_template = ::crypto::tink::JwtRs512_4096_F4_Template();
+            break;
+        case RawJwtRs512_4096_F4:
+            key_template = ::crypto::tink::RawJwtRs512_4096_F4_Template();
+            break;
+        case JwtPs256_2048_F4:
+            key_template = ::crypto::tink::JwtPs256_2048_F4_Template();
+            break;
+        case RawJwtPs256_2048_F4:
+            key_template = ::crypto::tink::RawJwtPs256_2048_F4_Template();
+            break;
+        case JwtPs256_3072_F4:
+            key_template = ::crypto::tink::JwtPs256_3072_F4_Template();
+            break;
+        case RawJwtPs256_3072_F4:
+            key_template = ::crypto::tink::RawJwtPs256_3072_F4_Template();
+            break;
+        case JwtPs384_3072_F4:
+            key_template = ::crypto::tink::JwtPs384_3072_F4_Template();
+            break;
+        case RawJwtPs384_3072_F4:
+            key_template = ::crypto::tink::RawJwtPs384_3072_F4_Template();
+            break;
+        case JwtPs512_4096_F4:
+            key_template = ::crypto::tink::JwtPs512_4096_F4_Template();
+            break;
+        case RawJwtPs512_4096_F4:
+            key_template = ::crypto::tink::RawJwtPs512_4096_F4_Template();
+            break;
+        default:
+        SetResult("Unknown jwt key template");
+            return TCL_ERROR;
+    }
+
+    // This will generate a new keyset with only *one* key and return a keyset handle to it.
+    absl::StatusOr<std::unique_ptr<KeysetHandle>> keyset_handle = KeysetHandle::GenerateNew(key_template);
+    if (!keyset_handle.ok()) {
+        SetResult("Error generating keyset");
+        return TCL_ERROR;
+    }
+
+    std::stringbuf buffer;
+    auto output_stream = absl::make_unique<std::ostream>(&buffer);
+
+    absl::StatusOr<std::unique_ptr<JsonKeysetWriter>> keyset_writer = JsonKeysetWriter::New(std::move(output_stream));
+    if (!keyset_writer.ok()) {
+        SetResult("Error creating writer");
+        return TCL_ERROR;
+    }
+
+    absl::Status status = CleartextKeysetHandle::Write((keyset_writer)->get(), **keyset_handle);;
+    if (!status.ok()) {
+        SetResult("Error writing keyset");
+        return TCL_ERROR;
+    }
+
+    Tcl_SetObjResult(interp, Tcl_NewStringObj(buffer.str().c_str(), buffer.str().size()));
+    return TCL_OK;
+}
+
 static void tink_ExitHandler(ClientData unused) {
     Tcl_MutexLock(&tink_KeysetNameToInternal_HT_Mutex);
     Tcl_DeleteHashTable(&tink_KeysetNameToInternal_HT);
@@ -1473,6 +1665,7 @@ void tink_InitModule() {
         if (!status.ok()) {
             std::cerr << "TinkConfig::Register() failed " << std::endl;
         }
+
         auto jwt_status = JwtSignatureRegister();
         if (!jwt_status.ok()) {
             std::cerr << "JwtSignatureRegister() failed " << std::endl;
@@ -1535,6 +1728,7 @@ int Tink_Init(Tcl_Interp *interp) {
     Tcl_CreateObjCommand(interp, "::tink::jwt::jwk_set_to_public_keyset", tink_JwkSetToPublicKeysetCmd, nullptr,
                          nullptr);
     Tcl_CreateObjCommand(interp, "::tink::jwt::jwk_set_from_public_keyset", tink_JwkSetFromPublicKeysetCmd, nullptr, nullptr);
+    Tcl_CreateObjCommand(interp, "::tink::jwt::create_private_keyset", tink_JwtCreatePrivateKeysetCmd, nullptr, nullptr);
 
     return Tcl_PkgProvide(interp, "tink", XSTR(PROJECT_VERSION));
 }
