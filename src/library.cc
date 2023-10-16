@@ -1323,7 +1323,7 @@ static int tink_JwtSignAndEncodeCmd(ClientData clientData, Tcl_Interp *interp, i
 
 static int tink_JwtVerifyAndDecodeCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]) {
     DBG(fprintf(stderr, "JwtVerifyAndDecodeCmd\n"));
-    CheckArgs(4, 5, 1, "keyset_handle token validator_dict ?decoded_dict_varname?");
+    CheckArgs(4, 5, 1, "keyset_handle token validator_dict ?payload_varname?");
 
     auto keyset_name = Tcl_GetString(objv[1]);
     auto keyset_ptr = tink_GetInternalFromKeysetName(keyset_name);

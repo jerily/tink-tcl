@@ -259,6 +259,47 @@ make install
   set keyset [::tink::daead::create_keyset "AES256_SIV"]
   ```
 
+### Json Web Token (JWT)
+
+* **::tink::jwt::sign_and_encode** *keyset_handle* *jwt_dict*
+    - Signs the given JWT dictionary with the given keyset handle and returns the resulting JWT.
+  The *jwt_dict* may include: audience, issuer, subject, jwt_id, expirirySeconds, and claims
+  that is a list of key value pairs.
+  ```tcl
+  set jwt_dict [dict create \
+    audience "aud" \
+    issuer "iss" \
+    subject "sub" \
+    jwt_id "jti" \
+    expirySeconds 1234567890 \
+    claims [list claim1 value1 claim2 value2]]
+
+  set token [::tink::jwt::sign_and_encode $private_keyset_handle $jwt_dict]
+  ```
+
+* **::tink::jwt::verify_and_decode** *keyset_handle* *token* *validator_dict* *?payload_varname?*
+    - Verifies the given JWT against the given keyset handle and returns the result of the verification.
+  If *payload_varname* is provided, it stores the payload as JSON in the corresponding var.
+  ```tcl
+  set validator_dict [dict create audience "aud" issuer "iss"]
+  set jwt_dict [::tink::jwt::verify_and_decode $public_keyset_handle $token $validator_dict payload]
+  ```
+
+* **::tink::jwt::jwk_set_to_public_keyset** *jwk_set*
+    - Converts the given JWK set to a public keyset and returns it.
+  ```tcl
+  set public_keyset [::tink::jwt::jwk_set_to_public_keyset $jwk_set]
+  ```
+
+* **::tink::jwt::jwk_set_from_public_keyset** *public_keyset*
+    - Converts the given public keyset to a JWK set and returns it.
+  ```tcl
+  set jwk_set [::tink::jwt::jwk_set_from_public_keyset $public_keyset]
+  ```
+
+* **::tink::jwt::create_private_keyset** *jwt_key_template*
+    - Creates a new keyset with one key using the given key template.
+
 ## Examples
 
 * [AEAD](examples/example-aead.tcl)
@@ -266,3 +307,4 @@ make install
 * [MAC](examples/example-mac.tcl)
 * [Digital Signatures](examples/example-signature.tcl)
 * [Deterministic AEAD](examples/example-daead.tcl)
+* [JWT](examples/example-jwt.tcl)
