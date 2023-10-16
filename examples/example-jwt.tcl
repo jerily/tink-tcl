@@ -49,8 +49,9 @@ puts token=$token
 
 set public_keyset_handle [::tink::register_keyset $jwt_signature_public_keyset]
 set validator_dict [dict create audience "aud" issuer "iss"]
-set verified [::tink::jwt::verify_and_decode $public_keyset_handle $token $validator_dict]
+set verified [::tink::jwt::verify_and_decode $public_keyset_handle $token $validator_dict payload]
 puts verified=$verified
+puts payload=$payload
 
 ::tink::unregister_keyset $private_keyset_handle
 ::tink::unregister_keyset $public_keyset_handle
@@ -70,7 +71,7 @@ set payload [dict create \
     claims [list claim1 value1 claim2 value2]]
 
 set token [::tink::jwt::sign_and_encode $jwt_keyset_handle $payload]
-puts hs256,token=$token
+puts token=$token
 
 set jwt_public_keyset [::tink::create_public_keyset $jwt_keyset]
 set jwt_public_keyset_handle [::tink::register_keyset $jwt_public_keyset]

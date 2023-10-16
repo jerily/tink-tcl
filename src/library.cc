@@ -1323,7 +1323,7 @@ static int tink_JwtSignAndEncodeCmd(ClientData clientData, Tcl_Interp *interp, i
 
 static int tink_JwtVerifyAndDecodeCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]) {
     DBG(fprintf(stderr, "JwtVerifyAndDecodeCmd\n"));
-    CheckArgs(4, 4, 1, "keyset_handle token validator_dict");
+    CheckArgs(4, 5, 1, "keyset_handle token validator_dict ?decoded_dict_varname?");
 
     auto keyset_name = Tcl_GetString(objv[1]);
     auto keyset_ptr = tink_GetInternalFromKeysetName(keyset_name);
@@ -1394,6 +1394,19 @@ static int tink_JwtVerifyAndDecodeCmd(ClientData clientData, Tcl_Interp *interp,
 
     absl::StatusOr<VerifiedJwt> verified_jwt =
             (*jwt_verifier)->VerifyAndDecode(*token_str, *validator);
+
+    if (verified_jwt.ok() && objc == 5) {
+        int varname_length;
+        const char *varname = Tcl_GetStringFromObj(objv[4], &varname_length);
+
+        Tcl_Obj *dictPtr = Tcl_NewDictObj();
+        absl::StatusOr<std::string> payload = verified_jwt->GetJsonPayload();
+        if (!payload.ok()) {
+            SetResult("error getting payload");
+            return TCL_ERROR;
+        }
+        Tcl_SetVar2(interp, varname, NULL, payload.value().c_str(), 0);
+    }
 
     Tcl_SetObjResult(interp, Tcl_NewBooleanObj(verified_jwt.ok()));
     return TCL_OK;
