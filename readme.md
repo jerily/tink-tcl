@@ -116,7 +116,7 @@ make install
     ::tink::unregister_keyset $keyset_handle
   ```
 * **::tink::create_public_keyset** *private_keyset*
-    - Creates a new public keyset from the given private keyset and returns a handle.
+    - Creates a new public keyset from the given private keyset and returns it.
   ```tcl
     set public_keyset [::tink::create_public_keyset $private_keyset]
   ```
