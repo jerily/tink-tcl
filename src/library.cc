@@ -165,7 +165,7 @@ static int tink_RegisterKeysetCmd(ClientData clientData, Tcl_Interp *interp, int
     keyset_ptr->keyset_handle = (*keyset_handle).release();
     char keyset_name[40];
     CMD_KEYSET_NAME(keyset_name, keyset_ptr->keyset_handle);
-    fprintf(stderr, "keyset_name=%s\n", keyset_name);
+    DBG(fprintf(stderr, "keyset_name=%s\n", keyset_name));
     tink_RegisterKeysetName(keyset_name, keyset_ptr);
 
     SetResult(keyset_name);
