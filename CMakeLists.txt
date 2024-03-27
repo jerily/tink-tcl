@@ -17,7 +17,7 @@ find_package(Threads REQUIRED)
 find_package (PkgConfig REQUIRED)
 pkg_check_modules (ABSL REQUIRED absl_status absl_statusor absl_synchronization absl_strings absl_hash absl_raw_hash_set) # ABSL_INCLUDE_DIRS, ABSL_LIBRARIES, ABSL_LIBRARY_DIRS
 pkg_check_modules (PROTOBUF REQUIRED protobuf) # PROTOBUF_INCLUDE_DIRS, PROTOBUF_LIBRARIES, PROTOBUF_LIBRARY_DIRS
-find_package(TCL EXACT 8.6.13 REQUIRED)  # TCL_INCLUDE_PATH TCL_LIBRARY
+find_package(TCL 8.6.13 REQUIRED)  # TCL_INCLUDE_PATH TCL_LIBRARY
 
 message(STATUS "TCL_INCLUDE_PATH: ${TCL_INCLUDE_PATH}")
 message(STATUS "TCL_LIBRARY: ${TCL_LIBRARY}")
