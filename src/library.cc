@@ -32,6 +32,14 @@
 #include <tink/jwt/jwt_mac_config.h>
 #include "library.h"
 
+#ifndef TCL_SIZE_MAX
+typedef int Tcl_Size;
+# define Tcl_GetSizeIntFromObj Tcl_GetIntFromObj
+# define Tcl_NewSizeIntObj Tcl_NewIntObj
+# define TCL_SIZE_MAX      INT_MAX
+# define TCL_SIZE_MODIFIER ""
+#endif
+
 #define XSTR(s) STR(s)
 #define STR(s) #s
 
@@ -256,11 +264,11 @@ static int tink_AeadEncryptCmd(ClientData clientData, Tcl_Interp *interp, int ob
         return TCL_ERROR;
     }
 
-    int plaintext_length;
+    Tcl_Size plaintext_length;
     const unsigned char *plaintext = Tcl_GetByteArrayFromObj(objv[2], &plaintext_length);
     absl::StatusOr<std::string> plaintext_str = std::string((const char *) plaintext, plaintext_length);
 
-    int associated_data_length;
+    Tcl_Size associated_data_length;
     auto associated_data = (objc == 4) ? Tcl_GetByteArrayFromObj(objv[3], &associated_data_length) : nullptr;
     absl::string_view associated_data_str = (objc == 4) ? absl::string_view((const char *) associated_data,
                                                                             associated_data_length) : "";
@@ -298,11 +306,11 @@ static int tink_AeadDecryptCmd(ClientData clientData, Tcl_Interp *interp, int ob
         return TCL_ERROR;
     }
 
-    int ciphertext_length;
+    Tcl_Size ciphertext_length;
     const unsigned char *ciphertext = Tcl_GetByteArrayFromObj(objv[2], &ciphertext_length);
     absl::StatusOr<std::string> ciphertext_str = std::string((const char *) ciphertext, ciphertext_length);
 
-    int associated_data_length;
+    Tcl_Size associated_data_length;
     auto associated_data = (objc == 4) ? Tcl_GetByteArrayFromObj(objv[3], &associated_data_length) : nullptr;
     absl::string_view associated_data_str = (objc == 4) ? absl::string_view((const char *) associated_data,
                                                                             associated_data_length) : "";
@@ -451,7 +459,7 @@ static int tink_MacComputeCmd(ClientData clientData, Tcl_Interp *interp, int obj
         return TCL_ERROR;
     }
 
-    int content_length;
+    Tcl_Size content_length;
     const unsigned char *content = Tcl_GetByteArrayFromObj(objv[2], &content_length);
     std::string content_str = std::string((const char *) content, content_length);
     absl::StatusOr<std::string> compute_result = (*mac_primitive)->ComputeMac(content_str);
@@ -492,11 +500,11 @@ static int tink_MacVerifyCmd(ClientData clientData, Tcl_Interp *interp, int objc
         return TCL_ERROR;
     }
 
-    int tag_length;
+    Tcl_Size tag_length;
     const unsigned char *tag = Tcl_GetByteArrayFromObj(objv[2], &tag_length);
     std::string tag_str = std::string((const char *) tag, tag_length);
 
-    int content_length;
+    Tcl_Size content_length;
     const unsigned char *content = Tcl_GetByteArrayFromObj(objv[3], &content_length);
     std::string content_str = std::string((const char *) content, content_length);
 
@@ -610,11 +618,11 @@ static int tink_HybridEncryptCmd(ClientData clientData, Tcl_Interp *interp, int 
         return TCL_ERROR;
     }
 
-    int plaintext_length;
+    Tcl_Size plaintext_length;
     const unsigned char *plaintext = Tcl_GetByteArrayFromObj(objv[2], &plaintext_length);
     absl::StatusOr<std::string> plaintext_str = std::string((const char *) plaintext, plaintext_length);
 
-    int context_info_length;
+    Tcl_Size context_info_length;
     auto context_info = (objc == 4) ? Tcl_GetByteArrayFromObj(objv[3], &context_info_length) : nullptr;
     absl::string_view context_info_str = (objc == 4) ? absl::string_view((const char *) context_info,
                                                                          context_info_length) : "";
@@ -652,11 +660,11 @@ static int tink_HybridDecryptCmd(ClientData clientData, Tcl_Interp *interp, int 
         return TCL_ERROR;
     }
 
-    int ciphertext_length;
+    Tcl_Size ciphertext_length;
     const unsigned char *ciphertext = Tcl_GetByteArrayFromObj(objv[2], &ciphertext_length);
     absl::StatusOr<std::string> ciphertext_str = std::string((const char *) ciphertext, ciphertext_length);
 
-    int context_info_length;
+    Tcl_Size context_info_length;
     auto context_info = (objc == 4) ? Tcl_GetByteArrayFromObj(objv[3], &context_info_length) : nullptr;
     absl::string_view context_info_str = (objc == 4) ? absl::string_view((const char *) context_info,
                                                                          context_info_length) : "";
@@ -842,7 +850,7 @@ static int tink_SignatureSignCmd(ClientData clientData, Tcl_Interp *interp, int 
         return TCL_ERROR;
     }
 
-    int content_length;
+    Tcl_Size content_length;
     const unsigned char *content = Tcl_GetByteArrayFromObj(objv[2], &content_length);
     absl::StatusOr<std::string> content_str = std::string((const char *) content, content_length);
 
@@ -885,11 +893,11 @@ static int tink_SignatureVerifyCmd(ClientData clientData, Tcl_Interp *interp, in
         return TCL_ERROR;
     }
 
-    int signature_length;
+    Tcl_Size signature_length;
     const unsigned char *signature = Tcl_GetByteArrayFromObj(objv[2], &signature_length);
     absl::StatusOr<std::string> signature_str = std::string((const char *) signature, signature_length);
 
-    int content_length;
+    Tcl_Size content_length;
     const unsigned char *content = Tcl_GetByteArrayFromObj(objv[3], &content_length);
     absl::StatusOr<std::string> content_str = std::string((const char *) content, content_length);
 
@@ -1039,11 +1047,11 @@ static int tink_DeterministicAeadEncryptCmd(ClientData clientData, Tcl_Interp *i
         return TCL_ERROR;
     }
 
-    int plaintext_length;
+    Tcl_Size plaintext_length;
     const unsigned char *plaintext = Tcl_GetByteArrayFromObj(objv[2], &plaintext_length);
     absl::StatusOr<std::string> plaintext_str = std::string((const char *) plaintext, plaintext_length);
 
-    int associated_data_length;
+    Tcl_Size associated_data_length;
     auto associated_data = (objc == 4) ? Tcl_GetByteArrayFromObj(objv[3], &associated_data_length) : nullptr;
     absl::string_view associated_data_str = (objc == 4) ? absl::string_view((const char *) associated_data,
                                                                             associated_data_length) : "";
@@ -1081,11 +1089,11 @@ static int tink_DeterministicAeadDecryptCmd(ClientData clientData, Tcl_Interp *i
         return TCL_ERROR;
     }
 
-    int ciphertext_length;
+    Tcl_Size ciphertext_length;
     const unsigned char *ciphertext = Tcl_GetByteArrayFromObj(objv[2], &ciphertext_length);
     absl::StatusOr<std::string> ciphertext_str = std::string((const char *) ciphertext, ciphertext_length);
 
-    int associated_data_length;
+    Tcl_Size associated_data_length;
     auto associated_data = (objc == 4) ? Tcl_GetByteArrayFromObj(objv[3], &associated_data_length) : nullptr;
     absl::string_view associated_data_str = (objc == 4) ? absl::string_view((const char *) associated_data,
                                                                             associated_data_length) : "";
@@ -1197,7 +1205,7 @@ static int tink_JwtSignAndEncodeCmd(ClientData clientData, Tcl_Interp *interp, i
     Tcl_DecrRefCount(audienceKeyPtr);
 
     if (audiencePtr) {
-        int audience_length;
+        Tcl_Size audience_length;
         const char *audience = Tcl_GetStringFromObj(audiencePtr, &audience_length);
         builder.SetAudience(audience);
     }
@@ -1232,7 +1240,7 @@ static int tink_JwtSignAndEncodeCmd(ClientData clientData, Tcl_Interp *interp, i
     Tcl_DecrRefCount(issuerKeyPtr);
 
     if (issuerPtr) {
-        int issuer_length;
+        Tcl_Size issuer_length;
         const char *issuer = Tcl_GetStringFromObj(issuerPtr, &issuer_length);
         builder.SetIssuer(issuer);
     }
@@ -1248,7 +1256,7 @@ static int tink_JwtSignAndEncodeCmd(ClientData clientData, Tcl_Interp *interp, i
     Tcl_DecrRefCount(subjectKeyPtr);
 
     if (subjectPtr) {
-        int subject_length;
+        Tcl_Size subject_length;
         const char *subject = Tcl_GetStringFromObj(subjectPtr, &subject_length);
         builder.SetSubject(subject);
     }
@@ -1264,7 +1272,7 @@ static int tink_JwtSignAndEncodeCmd(ClientData clientData, Tcl_Interp *interp, i
     Tcl_DecrRefCount(jwtIdKeyPtr);
 
     if (jwtIdPtr) {
-        int jwtId_length;
+        Tcl_Size jwtId_length;
         const char *jwtId = Tcl_GetStringFromObj(jwtIdPtr, &jwtId_length);
         builder.SetJwtId(jwtId);
     }
@@ -1281,7 +1289,7 @@ static int tink_JwtSignAndEncodeCmd(ClientData clientData, Tcl_Interp *interp, i
     Tcl_DecrRefCount(claimsKeyPtr);
 
     if (claimsPtr) {
-        int claims_length;
+        Tcl_Size claims_length;
         if (TCL_OK != Tcl_ListObjLength(interp, claimsPtr, &claims_length) || claims_length % 2 != 0) {
             SetResult("error reading claims, list length must be even");
             return TCL_ERROR;
@@ -1296,10 +1304,10 @@ static int tink_JwtSignAndEncodeCmd(ClientData clientData, Tcl_Interp *interp, i
                 return TCL_ERROR;
             }
 
-            int key_length;
+            Tcl_Size key_length;
             const char *key = Tcl_GetStringFromObj(keyPtr, &key_length);
 
-            int value_length;
+            Tcl_Size value_length;
             const char *value = Tcl_GetStringFromObj(valuePtr, &value_length);
 
             builder.AddStringClaim(key, value);
@@ -1347,7 +1355,7 @@ static int tink_JwtVerifyAndDecodeCmd(ClientData clientData, Tcl_Interp *interp,
         return TCL_ERROR;
     }
 
-    int token_length;
+    Tcl_Size token_length;
     const unsigned char *token = Tcl_GetByteArrayFromObj(objv[2], &token_length);
     absl::StatusOr<std::string> token_str = std::string((const char *) token, token_length);
 
@@ -1364,7 +1372,7 @@ static int tink_JwtVerifyAndDecodeCmd(ClientData clientData, Tcl_Interp *interp,
     Tcl_DecrRefCount(audienceKeyPtr);
 
     if (audiencePtr) {
-        int audience_length;
+        Tcl_Size audience_length;
         const char *audience = Tcl_GetStringFromObj(audiencePtr, &audience_length);
         builder.ExpectAudience(audience);
     }
@@ -1380,7 +1388,7 @@ static int tink_JwtVerifyAndDecodeCmd(ClientData clientData, Tcl_Interp *interp,
     Tcl_DecrRefCount(issuerKeyPtr);
 
     if (issuerPtr) {
-        int issuer_length;
+        Tcl_Size issuer_length;
         const char *issuer = Tcl_GetStringFromObj(issuerPtr, &issuer_length);
         builder.ExpectIssuer(issuer);
     }
@@ -1396,7 +1404,7 @@ static int tink_JwtVerifyAndDecodeCmd(ClientData clientData, Tcl_Interp *interp,
             (*jwt_verifier)->VerifyAndDecode(*token_str, *validator);
 
     if (verified_jwt.ok() && objc == 5) {
-        int varname_length;
+        Tcl_Size varname_length;
         const char *varname = Tcl_GetStringFromObj(objv[4], &varname_length);
 
         Tcl_Obj *dictPtr = Tcl_NewDictObj();
@@ -1416,7 +1424,7 @@ static int tink_JwkSetToPublicKeysetCmd(ClientData clientData, Tcl_Interp *inter
     DBG(fprintf(stderr, "JwkSetToPublicKeysetCmd\n"));
     CheckArgs(2, 2, 1, "jwk_set");
 
-    int jwk_set_length;
+    Tcl_Size jwk_set_length;
     absl::StatusOr<std::string> jwk_set = Tcl_GetStringFromObj(objv[1], &jwk_set_length);
 
     absl::StatusOr<std::unique_ptr<KeysetHandle>> keyset_handle =

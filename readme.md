@@ -50,10 +50,10 @@ make install
 
 ### tink
 ```
-wget https://github.com/tink-crypto/tink-cc/archive/refs/tags/v2.0.0.tar.gz
-tar -xzf v2.0.0.tar.gz
-cd tink-cc-2.0.0
-patch -p1 < ${TINK_TCL_DIR}/tink-cc-2.0.0.diff
+wget https://github.com/tink-crypto/tink-cc/archive/refs/tags/v2.1.1.tar.gz
+tar -xzf v2.1.1.tar.gz
+cd tink-cc-2.1.1
+patch -p1 < ${TINK_TCL_DIR}/tink-cc-2.1.1.diff
 mkdir build
 cd build
 cmake .. \
