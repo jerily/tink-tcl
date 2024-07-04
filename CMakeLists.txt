@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22.1)
-project(tink-tcl VERSION 2.1.1 LANGUAGES CXX C)
+project(tink-tcl VERSION 20240704.0.0 LANGUAGES CXX C)
 message(project: ${PROJECT_NAME})
 
 set(TARGET ${PROJECT_NAME})
@@ -43,7 +43,7 @@ set_target_properties(tink-tcl PROPERTIES
 get_filename_component(TCL_LIBRARY_PATH "${TCL_LIBRARY}" PATH)
 include_directories(${TCL_INCLUDE_PATH} ${ABSL_INCLUDE_DIRS} ${PROTOBUF_INCLUDE_DIRS})
 link_directories(tink-tcl ${TCL_LIBRARY_PATH} ${ABSL_LIBRARY_DIRS} ${PROTOBUF_LIBRARY_DIRS})
-target_link_directories(tink-tcl PRIVATE ${TCL_LIBRARY_PATH} ${ABSL_LIBRARY_DIRS} ${PROTOBUF_LIBRARY_DIRS})
+target_link_directories(tink-tcl PRIVATE ${TCL_LIBRARY_PATH} ${ABSL_LIBRARY_DIRS} ${PROTOBUF_LIBRARY_DIRS} ${TINK_CPP_DIR}/lib)
 target_link_libraries(tink-tcl PRIVATE tink ${TCL_LIBRARY} ${ABSL_LIBRARIES} ${PROTOBUF_LIBRARIES})
 
 install(TARGETS ${TARGET}
