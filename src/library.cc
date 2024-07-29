@@ -1703,7 +1703,7 @@ void tink_InitModule() {
         Tcl_InitHashTable(&tink_KeysetNameToInternal_HT, TCL_STRING_KEYS);
         Tcl_MutexUnlock(&tink_KeysetNameToInternal_HT_Mutex);
 
-        Tcl_CreateThreadExitHandler(tink_ExitHandler, nullptr);
+        Tcl_CreateExitHandler(tink_ExitHandler, nullptr);
         tink_ModuleInitialized = 1;
     }
 }
