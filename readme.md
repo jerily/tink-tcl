@@ -2,6 +2,13 @@
 
 Tcl bindings for [Tink](https://github.com/tink-crypto/tink-cc), a multi-language, cross-platform library that provides cryptographic APIs that are secure, easy to use correctly, and hard(er) to misuse.
 
+## Build requirements
+
+Use matching Tcl headers and stubs (Tcl 8.6 or 9), C++17, and Tink 2.1.1.
+The extension links Tcl stubs. The Tink patch uses the system linker.
+For GCC 15, download the registry’s [RapidJSON patch](https://github.com/jerily/ttrek.sh/blob/main/registry/tink-cc/2.1.1/rapidjson-1.1.0.diff)
+and pass `-DTINK_RAPIDJSON_PATCH=/path/to/rapidjson-1.1.0.diff` when configuring Tink.
+
 ## Clone the repository
 ```bash
 git clone https://github.com/jerily/tink-tcl.git
@@ -11,20 +18,20 @@ export TINK_TCL_DIR=`pwd`
 
 ## Install dependencies
 
-A compatible C++ compiler supporting at least C++14 is required.
+A compatible C++ compiler supporting at least C++17 is required.
 
 ### Abseil
 
 ```bash
-wget https://github.com/abseil/abseil-cpp/archive/refs/tags/20230125.0.tar.gz
-tar -xzf 20230125.0.tar.gz
-cd abseil-cpp-20230125.0
+wget https://github.com/abseil/abseil-cpp/archive/refs/tags/20230802.1.tar.gz
+tar -xzf 20230802.1.tar.gz
+cd abseil-cpp-20230802.1
 mkdir build
 cd build
 cmake .. \
   -DBUILD_SHARED_LIBS=ON \
   -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_CXX_STANDARD=14 \
+  -DCMAKE_CXX_STANDARD=17 \
   -DCMAKE_INSTALL_PREFIX=/usr/local
 make
 make install
@@ -79,10 +86,13 @@ cd build
 # or skip them to install in /usr/local
 cmake .. \
   -DTCL_LIBRARY_DIR=/usr/local/lib \
-  -DTCL_INCLUDE_DIR=/usr/local/include
+  -DTCL_INCLUDE_DIR=/usr/local/include \
+  -DTINK_CPP_DIR=/usr/local
 make
 make install
 ```
+
+Run `ctest --test-dir build --output-on-failure` to check loading, AEAD and MAC.
 
 ## TCL Commands
 
