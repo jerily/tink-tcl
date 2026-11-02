@@ -1708,8 +1708,14 @@ void tink_InitModule() {
     }
 }
 
+#if TCL_MAJOR_VERSION > 8
+#define MIN_VERSION "9.0"
+#else
+#define MIN_VERSION "8.6"
+#endif
+
 int Tink_Init(Tcl_Interp *interp) {
-    if (Tcl_InitStubs(interp, "8.6", 0) == nullptr) {
+    if (Tcl_InitStubs(interp, MIN_VERSION, 0) == nullptr) {
         return TCL_ERROR;
     }
 

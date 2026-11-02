@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22.1)
-project(tink-tcl VERSION 20240704.0.0 LANGUAGES CXX C)
+project(tink-tcl VERSION 20240704.0.1 LANGUAGES CXX C)
 message(project: ${PROJECT_NAME})
 
 set(TARGET ${PROJECT_NAME})
@@ -17,10 +17,13 @@ find_package(Threads REQUIRED)
 find_package (PkgConfig REQUIRED)
 pkg_check_modules (ABSL REQUIRED absl_status absl_statusor absl_synchronization absl_strings absl_hash absl_raw_hash_set) # ABSL_INCLUDE_DIRS, ABSL_LIBRARIES, ABSL_LIBRARY_DIRS
 pkg_check_modules (PROTOBUF REQUIRED protobuf) # PROTOBUF_INCLUDE_DIRS, PROTOBUF_LIBRARIES, PROTOBUF_LIBRARY_DIRS
-find_package(TCL 8.6.13 REQUIRED)  # TCL_INCLUDE_PATH TCL_LIBRARY
+find_package(TclStub 8.6 REQUIRED)  # TCL_INCLUDE_PATH TCL_STUB_LIBRARY TCL_TCLSH
+set(TINK_CPP_DIR "" CACHE PATH "Tink installation prefix")
+find_path(TINK_INCLUDE_DIR tink/aead.h HINTS "${TINK_CPP_DIR}" PATH_SUFFIXES include REQUIRED)
+find_library(TINK_LIBRARY NAMES tink HINTS "${TINK_CPP_DIR}" PATH_SUFFIXES lib lib64 REQUIRED)
 
 message(STATUS "TCL_INCLUDE_PATH: ${TCL_INCLUDE_PATH}")
-message(STATUS "TCL_LIBRARY: ${TCL_LIBRARY}")
+message(STATUS "TCL_STUB_LIBRARY: ${TCL_STUB_LIBRARY}")
 message(STATUS "ABSL_INCLUDE_DIRS: ${ABSL_INCLUDE_DIRS}")
 message(STATUS "ABSL_LIBRARIES: ${ABSL_LIBRARIES}")
 message(STATUS "ABSL_LIBRARY_DIRS: ${ABSL_LIBRARY_DIRS}")
@@ -40,17 +43,25 @@ set_target_properties(tink-tcl PROPERTIES
         POSITION_INDEPENDENT_CODE ON
         INSTALL_RPATH_USE_LINK_PATH ON
 )
-get_filename_component(TCL_LIBRARY_PATH "${TCL_LIBRARY}" PATH)
-include_directories(${TCL_INCLUDE_PATH} ${ABSL_INCLUDE_DIRS} ${PROTOBUF_INCLUDE_DIRS})
-link_directories(tink-tcl ${TCL_LIBRARY_PATH} ${ABSL_LIBRARY_DIRS} ${PROTOBUF_LIBRARY_DIRS})
-target_link_directories(tink-tcl PRIVATE ${TCL_LIBRARY_PATH} ${ABSL_LIBRARY_DIRS} ${PROTOBUF_LIBRARY_DIRS} ${TINK_CPP_DIR}/lib)
-target_link_libraries(tink-tcl PRIVATE tink ${TCL_LIBRARY} ${ABSL_LIBRARIES} ${PROTOBUF_LIBRARIES})
+target_include_directories(tink-tcl PRIVATE ${TCL_INCLUDE_PATH} ${TINK_INCLUDE_DIR} ${ABSL_INCLUDE_DIRS} ${PROTOBUF_INCLUDE_DIRS})
+target_compile_definitions(tink-tcl PRIVATE USE_TCL_STUBS)
+target_link_directories(tink-tcl PRIVATE ${ABSL_LIBRARY_DIRS} ${PROTOBUF_LIBRARY_DIRS})
+target_link_libraries(tink-tcl PRIVATE ${TINK_LIBRARY} ${TCL_STUB_LIBRARY} ${ABSL_LIBRARIES} ${PROTOBUF_LIBRARIES})
 
 install(TARGETS ${TARGET}
         LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/${TARGET}${PROJECT_VERSION}
 )
 
 configure_file(pkgIndex.tcl.in pkgIndex.tcl @ONLY)
+
+include(CTest)
+if(BUILD_TESTING)
+    if(NOT TCL_TCLSH)
+        message(FATAL_ERROR "Tcl interpreter required for tests; set TCL_TCLSH or BUILD_TESTING=OFF")
+    endif()
+    add_test(NAME runtime COMMAND ${TCL_TCLSH} ${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime.tcl
+        ${CMAKE_CURRENT_BINARY_DIR})
+endif()
 
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/pkgIndex.tcl
         DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/${TARGET}${PROJECT_VERSION}

@@ -1,6 +1,5 @@
-diff -ur tink-cc-2.1.1/cmake/TinkWorkspace.cmake tink-cc/cmake/TinkWorkspace.cmake
---- tink-cc-2.1.1/cmake/TinkWorkspace.cmake	2023-11-30 18:26:00.000000000 -0500
-+++ tink-cc/cmake/TinkWorkspace.cmake	2024-03-27 04:01:56.319966030 -0400
+--- a/cmake/TinkWorkspace.cmake
++++ b/cmake/TinkWorkspace.cmake
 @@ -88,13 +88,15 @@
  else()
    # This is everything that needs to be done here. Abseil already defines its
@@ -28,7 +27,7 @@ diff -ur tink-cc-2.1.1/cmake/TinkWorkspace.cmake tink-cc/cmake/TinkWorkspace.cma
      # Support for ED25519 was added from 1.1.1.
      find_package(OpenSSL 1.1.1 REQUIRED)
      _create_interface_target(crypto OpenSSL::Crypto)
-@@ -123,21 +127,29 @@
+@@ -123,21 +127,36 @@
  set(RAPIDJSON_BUILD_EXAMPLES OFF CACHE BOOL "Tink dependency override" FORCE)
  set(RAPIDJSON_BUILD_TESTS OFF CACHE BOOL "Tink dependency override" FORCE)
  
@@ -41,10 +40,17 @@ diff -ur tink-cc-2.1.1/cmake/TinkWorkspace.cmake tink-cc/cmake/TinkWorkspace.cma
 -add_library(rapidjson INTERFACE)
 -target_include_directories(rapidjson INTERFACE "${rapidjson_SOURCE_DIR}")
 +if (NOT TINK_USE_INSTALLED_RAPIDJSON)
++  set(TINK_RAPIDJSON_PATCH "" CACHE FILEPATH "RapidJSON source patch")
++  set(RAPIDJSON_PATCH_COMMAND "")
++  if(TINK_RAPIDJSON_PATCH)
++    find_program(PATCH_EXECUTABLE patch REQUIRED)
++    set(RAPIDJSON_PATCH_COMMAND "${PATCH_EXECUTABLE}" -p1 -i "${TINK_RAPIDJSON_PATCH}")
++  endif()
 +  http_archive(
 +    NAME rapidjson
 +    URL https://github.com/Tencent/rapidjson/archive/v1.1.0.tar.gz
 +    SHA256 bf7ced29704a1e696fbccf2a2b4ea068e7774fa37f6d7dd4039d0787f8bed98e
++    PATCH_COMMAND ${RAPIDJSON_PATCH_COMMAND}
 +  )
 +  # Rapidjson is a header-only library with no explicit target. Here we create one.
 +  add_library(rapidjson INTERFACE)
@@ -73,14 +79,12 @@ diff -ur tink-cc-2.1.1/cmake/TinkWorkspace.cmake tink-cc/cmake/TinkWorkspace.cma
 +else()
 +  find_package(Protobuf REQUIRED)
 +endif()
-Only in tink-cc: cmake-build-debug
-diff -ur tink-cc-2.1.1/CMakeLists.txt tink-cc/CMakeLists.txt
---- tink-cc-2.1.1/CMakeLists.txt	2023-11-30 18:26:00.000000000 -0500
-+++ tink-cc/CMakeLists.txt	2024-03-26 05:21:39.194502916 -0400
-@@ -1,6 +1,15 @@
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -1,5 +1,14 @@
  cmake_minimum_required(VERSION 3.13)
  project(Tink VERSION 2.1.1 LANGUAGES CXX)
- 
++
 +set(CMAKE_C_STANDARD   11)
 +set(CMAKE_CXX_STANDARD 17)
 +set(CMAKE_CXX_STANDARD_REQUIRED true)
@@ -89,10 +93,9 @@ diff -ur tink-cc-2.1.1/CMakeLists.txt tink-cc/CMakeLists.txt
 +set(CMAKE_BUILD_TYPE Release)
 +set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 +set(BUILD_SHARED_LIBS ON)
-+
+ 
  list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
  
- option(TINK_BUILD_TESTS "Build Tink tests" OFF)
 @@ -8,6 +17,16 @@
  option(TINK_USE_INSTALLED_ABSEIL "Build Tink linking to Abseil installed in the system" OFF)
  option(TINK_USE_INSTALLED_GOOGLETEST "Build Tink linking to GTest installed in the system" OFF)
@@ -136,10 +139,8 @@ diff -ur tink-cc-2.1.1/CMakeLists.txt tink-cc/CMakeLists.txt
 +#    DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}"
 +#  )
 +endif()
-Only in tink-cc: .idea
-diff -ur tink-cc-2.1.1/tink/CMakeLists.txt tink-cc/tink/CMakeLists.txt
---- tink-cc-2.1.1/tink/CMakeLists.txt	2023-11-30 18:26:00.000000000 -0500
-+++ tink-cc/tink/CMakeLists.txt	2024-03-26 05:26:12.669604059 -0400
+--- a/tink/CMakeLists.txt
++++ b/tink/CMakeLists.txt
 @@ -25,9 +25,7 @@
  
  set(TINK_VERSION_H "${TINK_GENFILE_DIR}/tink/version.h")
@@ -194,7 +195,7 @@ diff -ur tink-cc-2.1.1/tink/CMakeLists.txt tink-cc/tink/CMakeLists.txt
    PUBLIC
  )
  
-@@ -1135,3 +1159,39 @@
+@@ -1135,3 +1159,37 @@
      absl::strings
      absl::string_view
  )
@@ -215,10 +216,8 @@ diff -ur tink-cc-2.1.1/tink/CMakeLists.txt tink-cc/tink/CMakeLists.txt
 +  else()
 +  target_link_libraries(tink
 +	  PRIVATE
-+    -fuse-ld=gold  # GNU ld does not support ICF.
 +    -Wl,--version-script="${CMAKE_CURRENT_SOURCE_DIR}/version_script.lds"
 +    -Wl,--gc-sections
-+    -Wl,--icf=all
 +    -Wl,--strip-all
 +  )
 +  target_link_libraries(tink
@@ -234,9 +233,8 @@ diff -ur tink-cc-2.1.1/tink/CMakeLists.txt tink-cc/tink/CMakeLists.txt
 +endif()
 +
 +
-diff -ur tink-cc-2.1.1/tink/internal/CMakeLists.txt tink-cc/tink/internal/CMakeLists.txt
---- tink-cc-2.1.1/tink/internal/CMakeLists.txt	2023-11-30 18:26:00.000000000 -0500
-+++ tink-cc/tink/internal/CMakeLists.txt	2024-03-26 05:26:50.154575901 -0400
+--- a/tink/internal/CMakeLists.txt
++++ b/tink/internal/CMakeLists.txt
 @@ -230,7 +230,7 @@
    DEPS
      tink::internal::key_info
@@ -246,9 +244,8 @@ diff -ur tink-cc-2.1.1/tink/internal/CMakeLists.txt tink-cc/tink/internal/CMakeL
      tink::proto::tink_cc_proto
  )
  
-diff -ur tink-cc-2.1.1/tink/util/CMakeLists.txt tink-cc/tink/util/CMakeLists.txt
---- tink-cc-2.1.1/tink/util/CMakeLists.txt	2023-11-30 18:26:00.000000000 -0500
-+++ tink-cc/tink/util/CMakeLists.txt	2024-03-26 05:27:23.275434360 -0400
+--- a/tink/util/CMakeLists.txt
++++ b/tink/util/CMakeLists.txt
 @@ -226,7 +226,7 @@
    SRCS
      protobuf_helper.h
@@ -258,3 +255,20 @@ diff -ur tink-cc-2.1.1/tink/util/CMakeLists.txt tink-cc/tink/util/CMakeLists.txt
  )
  
  tink_cc_library(
+--- a/cmake/HttpArchive.cmake
++++ b/cmake/HttpArchive.cmake
+@@ -45,12 +45,13 @@
+   cmake_parse_arguments(PARSE_ARGV 0 http_archive
+     "DATA_ONLY"
+     "NAME;URL;SHA256;CMAKE_SUBDIR"
+-    "CMAKE_ARGS"
++    "CMAKE_ARGS;PATCH_COMMAND"
+   )
+   FetchContent_Declare(
+     ${http_archive_NAME}
+     URL       ${http_archive_URL}
+     URL_HASH  SHA256=${http_archive_SHA256}
++    PATCH_COMMAND ${http_archive_PATCH_COMMAND}
+   )
+   message(STATUS "Fetching ${http_archive_NAME}")
+   FetchContent_GetProperties(${http_archive_NAME})
