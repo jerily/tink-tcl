@@ -97,7 +97,16 @@ static Tcl_Mutex tink_KeysetNameToInternal_HT_Mutex;
 
 typedef struct {
     KeysetHandle *keyset_handle;
+    Tcl_Interp *owner;
 } tink_keyset_t;
+
+static void tink_KeysetName(char *name) {
+    static Tcl_WideInt sequence = 0;
+    Tcl_MutexLock(&tink_KeysetNameToInternal_HT_Mutex);
+    auto next = ++sequence;
+    Tcl_MutexUnlock(&tink_KeysetNameToInternal_HT_Mutex);
+    snprintf(name, 40, "tink_key_%lld", (long long)next);
+}
 
 int tink_RegisterKeysetName(const char *name, tink_keyset_t *internal) {
 
@@ -132,7 +141,7 @@ int tink_UnregisterKeysetName(const char *name) {
     return entryPtr != NULL;
 }
 
-tink_keyset_t *tink_GetInternalFromKeysetName(const char *name) {
+tink_keyset_t *tink_GetInternalFromKeysetName(Tcl_Interp *interp, const char *name) {
     tink_keyset_t *internal = NULL;
     Tcl_HashEntry *entryPtr;
 
@@ -140,6 +149,7 @@ tink_keyset_t *tink_GetInternalFromKeysetName(const char *name) {
     entryPtr = Tcl_FindHashEntry(&tink_KeysetNameToInternal_HT, (char *) name);
     if (entryPtr != NULL) {
         internal = (tink_keyset_t *) Tcl_GetHashValue(entryPtr);
+        if (internal->owner != interp) internal = nullptr;
     }
     Tcl_MutexUnlock(&tink_KeysetNameToInternal_HT_Mutex);
 
@@ -171,8 +181,9 @@ static int tink_RegisterKeysetCmd(ClientData clientData, Tcl_Interp *interp, int
         return TCL_ERROR;
     }
     keyset_ptr->keyset_handle = (*keyset_handle).release();
+    keyset_ptr->owner = interp;
     char keyset_name[40];
-    CMD_KEYSET_NAME(keyset_name, keyset_ptr->keyset_handle);
+    tink_KeysetName(keyset_name);
     DBG(fprintf(stderr, "keyset_name=%s\n", keyset_name));
     tink_RegisterKeysetName(keyset_name, keyset_ptr);
 
@@ -184,7 +195,7 @@ static int tink_UnregisterKeysetCmd(ClientData clientData, Tcl_Interp *interp, i
     DBG(fprintf(stderr, "UnregisterKeysetCmd\n"));
     CheckArgs(2, 2, 1, "keyset_handle");
     auto keyset_name = Tcl_GetString(objv[1]);
-    auto keyset_ptr = tink_GetInternalFromKeysetName(keyset_name);
+    auto keyset_ptr = tink_GetInternalFromKeysetName(interp, keyset_name);
     if (keyset_ptr == nullptr) {
         SetResult("keyset handle not found");
         return TCL_ERROR;
@@ -243,7 +254,7 @@ static int tink_AeadEncryptCmd(ClientData clientData, Tcl_Interp *interp, int ob
     CheckArgs(3, 4, 1, "keyset_handle plaintext ?associated_data?");
 
     auto keyset_name = Tcl_GetString(objv[1]);
-    auto keyset_ptr = tink_GetInternalFromKeysetName(keyset_name);
+    auto keyset_ptr = tink_GetInternalFromKeysetName(interp, keyset_name);
     if (keyset_ptr == nullptr) {
         SetResult("keyset handle not found");
         return TCL_ERROR;
@@ -291,7 +302,7 @@ static int tink_AeadDecryptCmd(ClientData clientData, Tcl_Interp *interp, int ob
     CheckArgs(3, 4, 1, "keyset_handle ciphertext ?associated_data?");
 
     auto keyset_name = Tcl_GetString(objv[1]);
-    auto keyset_ptr = tink_GetInternalFromKeysetName(keyset_name);
+    auto keyset_ptr = tink_GetInternalFromKeysetName(interp, keyset_name);
     if (keyset_ptr == nullptr) {
         SetResult("keyset handle not found");
         return TCL_ERROR;
@@ -438,7 +449,7 @@ static int tink_MacComputeCmd(ClientData clientData, Tcl_Interp *interp, int obj
     CheckArgs(3, 3, 1, "keyset_handle content");
 
     auto keyset_name = Tcl_GetString(objv[1]);
-    auto keyset_ptr = tink_GetInternalFromKeysetName(keyset_name);
+    auto keyset_ptr = tink_GetInternalFromKeysetName(interp, keyset_name);
     if (keyset_ptr == nullptr) {
         SetResult("keyset handle not found");
         return TCL_ERROR;
@@ -479,7 +490,7 @@ static int tink_MacVerifyCmd(ClientData clientData, Tcl_Interp *interp, int objc
     CheckArgs(4, 4, 1, "keyset_handle tag content");
 
     auto keyset_name = Tcl_GetString(objv[1]);
-    auto keyset_ptr = tink_GetInternalFromKeysetName(keyset_name);
+    auto keyset_ptr = tink_GetInternalFromKeysetName(interp, keyset_name);
     if (keyset_ptr == nullptr) {
         SetResult("keyset handle not found");
         return TCL_ERROR;
@@ -597,7 +608,7 @@ static int tink_HybridEncryptCmd(ClientData clientData, Tcl_Interp *interp, int 
     CheckArgs(3, 4, 1, "keyset_handle plaintext ?context_info?");
 
     auto keyset_name = Tcl_GetString(objv[1]);
-    auto keyset_ptr = tink_GetInternalFromKeysetName(keyset_name);
+    auto keyset_ptr = tink_GetInternalFromKeysetName(interp, keyset_name);
     if (keyset_ptr == nullptr) {
         SetResult("keyset handle not found");
         return TCL_ERROR;
@@ -645,7 +656,7 @@ static int tink_HybridDecryptCmd(ClientData clientData, Tcl_Interp *interp, int 
     CheckArgs(3, 4, 1, "keyset_handle ciphertext ?context_info?");
 
     auto keyset_name = Tcl_GetString(objv[1]);
-    auto keyset_ptr = tink_GetInternalFromKeysetName(keyset_name);
+    auto keyset_ptr = tink_GetInternalFromKeysetName(interp, keyset_name);
     if (keyset_ptr == nullptr) {
         SetResult("keyset handle not found");
         return TCL_ERROR;
@@ -829,7 +840,7 @@ static int tink_SignatureSignCmd(ClientData clientData, Tcl_Interp *interp, int 
     CheckArgs(3, 3, 1, "keyset_handle content");
 
     auto keyset_name = Tcl_GetString(objv[1]);
-    auto keyset_ptr = tink_GetInternalFromKeysetName(keyset_name);
+    auto keyset_ptr = tink_GetInternalFromKeysetName(interp, keyset_name);
     if (keyset_ptr == nullptr) {
         SetResult("keyset handle not found");
         return TCL_ERROR;
@@ -872,7 +883,7 @@ static int tink_SignatureVerifyCmd(ClientData clientData, Tcl_Interp *interp, in
     CheckArgs(4, 4, 1, "keyset_handle signature content");
 
     auto keyset_name = Tcl_GetString(objv[1]);
-    auto keyset_ptr = tink_GetInternalFromKeysetName(keyset_name);
+    auto keyset_ptr = tink_GetInternalFromKeysetName(interp, keyset_name);
     if (keyset_ptr == nullptr) {
         SetResult("keyset handle not found");
         return TCL_ERROR;
@@ -1026,7 +1037,7 @@ static int tink_DeterministicAeadEncryptCmd(ClientData clientData, Tcl_Interp *i
     CheckArgs(3, 4, 1, "keyset_handle plaintext ?associated_data?");
 
     auto keyset_name = Tcl_GetString(objv[1]);
-    auto keyset_ptr = tink_GetInternalFromKeysetName(keyset_name);
+    auto keyset_ptr = tink_GetInternalFromKeysetName(interp, keyset_name);
     if (keyset_ptr == nullptr) {
         SetResult("keyset handle not found");
         return TCL_ERROR;
@@ -1074,7 +1085,7 @@ static int tink_DeterministicAeadDecryptCmd(ClientData clientData, Tcl_Interp *i
     CheckArgs(3, 4, 1, "keyset_handle ciphertext ?associated_data?");
 
     auto keyset_name = Tcl_GetString(objv[1]);
-    auto keyset_ptr = tink_GetInternalFromKeysetName(keyset_name);
+    auto keyset_ptr = tink_GetInternalFromKeysetName(interp, keyset_name);
     if (keyset_ptr == nullptr) {
         SetResult("keyset handle not found");
         return TCL_ERROR;
@@ -1171,7 +1182,7 @@ static int tink_JwtSignAndEncodeCmd(ClientData clientData, Tcl_Interp *interp, i
     CheckArgs(3, 3, 1, "keyset_handle jwt_dict");
 
     auto keyset_name = Tcl_GetString(objv[1]);
-    auto keyset_ptr = tink_GetInternalFromKeysetName(keyset_name);
+    auto keyset_ptr = tink_GetInternalFromKeysetName(interp, keyset_name);
     if (keyset_ptr == nullptr) {
         SetResult("keyset handle not found");
         return TCL_ERROR;
@@ -1316,6 +1327,7 @@ static int tink_JwtSignAndEncodeCmd(ClientData clientData, Tcl_Interp *interp, i
 
     absl::StatusOr<RawJwt> raw_jwt = builder.Build();
 
+    if (!raw_jwt.ok()) {SetResult("invalid JWT claims"); return TCL_ERROR;}
     absl::StatusOr<std::string> token =
             (*jwt_signer)->SignAndEncode(*raw_jwt);
 
@@ -1334,7 +1346,7 @@ static int tink_JwtVerifyAndDecodeCmd(ClientData clientData, Tcl_Interp *interp,
     CheckArgs(4, 5, 1, "keyset_handle token validator_dict ?payload_varname?");
 
     auto keyset_name = Tcl_GetString(objv[1]);
-    auto keyset_ptr = tink_GetInternalFromKeysetName(keyset_name);
+    auto keyset_ptr = tink_GetInternalFromKeysetName(interp, keyset_name);
     if (keyset_ptr == nullptr) {
         SetResult("keyset handle not found");
         return TCL_ERROR;
@@ -1403,11 +1415,11 @@ static int tink_JwtVerifyAndDecodeCmd(ClientData clientData, Tcl_Interp *interp,
     absl::StatusOr<VerifiedJwt> verified_jwt =
             (*jwt_verifier)->VerifyAndDecode(*token_str, *validator);
 
+    if (objc == 5) Tcl_UnsetVar(interp, Tcl_GetString(objv[4]), 0);
     if (verified_jwt.ok() && objc == 5) {
         Tcl_Size varname_length;
         const char *varname = Tcl_GetStringFromObj(objv[4], &varname_length);
 
-        Tcl_Obj *dictPtr = Tcl_NewDictObj();
         absl::StatusOr<std::string> payload = verified_jwt->GetJsonPayload();
         if (!payload.ok()) {
             SetResult("error getting payload");
@@ -1431,11 +1443,7 @@ static int tink_JwkSetToPublicKeysetCmd(ClientData clientData, Tcl_Interp *inter
       JwkSetToPublicKeysetHandle(*jwk_set);
 
 
-    auto public_keyset_handle = (*keyset_handle)->GetPublicKeysetHandle();
-    if (!public_keyset_handle.ok()) {
-        SetResult("Error getting public keyset handle");
-        return TCL_ERROR;
-    }
+    if (!keyset_handle.ok()) {SetResult("invalid public JWKS"); return TCL_ERROR;}
 
     std::stringbuf buffer;
     auto output_stream = absl::make_unique<std::ostream>(&buffer);
@@ -1446,7 +1454,7 @@ static int tink_JwkSetToPublicKeysetCmd(ClientData clientData, Tcl_Interp *inter
         return TCL_ERROR;
     }
 
-    absl::Status status = CleartextKeysetHandle::Write((keyset_writer)->get(), **public_keyset_handle);;
+    absl::Status status = CleartextKeysetHandle::Write((keyset_writer)->get(), **keyset_handle);;
     if (!status.ok()) {
         SetResult("Error writing keyset");
         return TCL_ERROR;
@@ -1479,6 +1487,7 @@ static int tink_JwkSetFromPublicKeysetCmd(ClientData clientData, Tcl_Interp *int
             JwkSetFromPublicKeysetHandle(**keyset_handle);
     if (!public_jwk_set.ok()) {
         SetResult("Error getting public keyset");
+        return TCL_ERROR;
     }
 
     Tcl_SetObjResult(interp, Tcl_NewStringObj(public_jwk_set.value().c_str(), public_jwk_set.value().size()));
@@ -1676,6 +1685,25 @@ static int tink_JwtCreatePrivateKeysetCmd(ClientData clientData, Tcl_Interp *int
     return TCL_OK;
 }
 
+#include "oauth_jwt.h"
+
+static void tink_InterpDeleted(ClientData, Tcl_Interp *interp) {
+    Tcl_MutexLock(&tink_KeysetNameToInternal_HT_Mutex);
+    Tcl_HashSearch search;
+    auto entry = Tcl_FirstHashEntry(&tink_KeysetNameToInternal_HT, &search);
+    while (entry) {
+        auto next = Tcl_NextHashEntry(&search);
+        auto key = (tink_keyset_t *)Tcl_GetHashValue(entry);
+        if (key->owner == interp) {
+            delete key->keyset_handle;
+            Tcl_Free((char *)key);
+            Tcl_DeleteHashEntry(entry);
+        }
+        entry = next;
+    }
+    Tcl_MutexUnlock(&tink_KeysetNameToInternal_HT_Mutex);
+}
+
 static void tink_ExitHandler(ClientData unused) {
     Tcl_MutexLock(&tink_KeysetNameToInternal_HT_Mutex);
     Tcl_DeleteHashTable(&tink_KeysetNameToInternal_HT);
@@ -1683,6 +1711,7 @@ static void tink_ExitHandler(ClientData unused) {
 }
 
 void tink_InitModule() {
+    Tcl_MutexLock(&tink_KeysetNameToInternal_HT_Mutex);
     if (!tink_ModuleInitialized) {
         auto status = TinkConfig::Register();
         if (!status.ok()) {
@@ -1699,13 +1728,12 @@ void tink_InitModule() {
             std::cerr << "JwtMacRegister() failed " << std::endl;
         }
 
-        Tcl_MutexLock(&tink_KeysetNameToInternal_HT_Mutex);
         Tcl_InitHashTable(&tink_KeysetNameToInternal_HT, TCL_STRING_KEYS);
-        Tcl_MutexUnlock(&tink_KeysetNameToInternal_HT_Mutex);
 
         Tcl_CreateExitHandler(tink_ExitHandler, nullptr);
         tink_ModuleInitialized = 1;
     }
+    Tcl_MutexUnlock(&tink_KeysetNameToInternal_HT_Mutex);
 }
 
 #if TCL_MAJOR_VERSION > 8
@@ -1720,6 +1748,7 @@ int Tink_Init(Tcl_Interp *interp) {
     }
 
     tink_InitModule();
+    Tcl_SetAssocData(interp, "tink-keysets", tink_InterpDeleted, nullptr);
 
 
     Tcl_CreateNamespace(interp, "::tink", nullptr, nullptr);
@@ -1757,6 +1786,12 @@ int Tink_Init(Tcl_Interp *interp) {
     Tcl_CreateObjCommand(interp, "::tink::daead::create_keyset", tink_DaeadCreateKeysetCmd, nullptr, nullptr);
 
     Tcl_CreateNamespace(interp, "::tink::jwt", nullptr, nullptr);
+    Tcl_CreateObjCommand(interp, "::tink::jwt::sign", JwtSignCmd, nullptr, nullptr);
+    Tcl_CreateObjCommand(interp, "::tink::jwt::verify", JwtVerifyCmd, nullptr, nullptr);
+    Tcl_CreateObjCommand(interp, "::tink::jwt::mac_sign", JwtSignCmd, (ClientData)1, nullptr);
+    Tcl_CreateObjCommand(interp, "::tink::jwt::mac_verify", JwtVerifyCmd, (ClientData)1, nullptr);
+    Tcl_CreateObjCommand(interp, "::tink::jwt::import_jwks", JwtImportCmd, nullptr, nullptr);
+    Tcl_CreateObjCommand(interp, "::tink::jwt::export_jwks", JwtExportCmd, nullptr, nullptr);
     Tcl_CreateObjCommand(interp, "::tink::jwt::sign_and_encode", tink_JwtSignAndEncodeCmd, nullptr, nullptr);
     Tcl_CreateObjCommand(interp, "::tink::jwt::verify_and_decode", tink_JwtVerifyAndDecodeCmd, nullptr, nullptr);
     Tcl_CreateObjCommand(interp, "::tink::jwt::jwk_set_to_public_keyset", tink_JwkSetToPublicKeysetCmd, nullptr,

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22.1)
-project(tink-tcl VERSION 20240704.0.2 LANGUAGES CXX C)
+project(tink-tcl VERSION 20240704.0.3 LANGUAGES CXX C)
 message(project: ${PROJECT_NAME})
 
 set(TARGET ${PROJECT_NAME})
@@ -60,6 +60,8 @@ if(BUILD_TESTING)
         message(FATAL_ERROR "Tcl interpreter required for tests; set TCL_TCLSH or BUILD_TESTING=OFF")
     endif()
     add_test(NAME runtime COMMAND ${TCL_TCLSH} ${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime.tcl
+        ${CMAKE_CURRENT_BINARY_DIR})
+    add_test(NAME jwt COMMAND ${TCL_TCLSH} ${CMAKE_CURRENT_SOURCE_DIR}/tests/jwt.tcl
         ${CMAKE_CURRENT_BINARY_DIR})
 endif()
 
