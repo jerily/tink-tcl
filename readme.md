@@ -1,5 +1,42 @@
 # tink-tcl
 
+## Typed JWT commands (20240704.0.3)
+
+These bindings use Tink 2.1.1 for JWT cryptography and validation. Tcl structured
+claims use `tjson` notation; nested objects/arrays require `tjson >=1.0.28` for
+serialization. Tink retains its internal JWT/JWK parser. The OAuth packages use
+tjson for all protocol JSON and strict token preflight checks.
+
+| Command | Contract |
+| --- | --- |
+| `::tink::jwt::sign handle typedClaims ?type?` | Asymmetric JWT signing; claims are `{M fields}` |
+| `::tink::jwt::verify handle compact validator` | Verified payload JSON, or a Tcl error |
+| `::tink::jwt::mac_sign handle typedClaims ?type?` | Separate symmetric JWT MAC primitive |
+| `::tink::jwt::mac_verify handle compact validator` | MAC verification; never substitute a public key |
+| `::tink::jwt::import_jwks publicJwksJson` | Register public verification keys; caller owns returned handle |
+| `::tink::jwt::export_jwks handle` | Export public JWKS from a public or private JWT keyset |
+
+Typed claims support strings, numbers, booleans, null, arrays and objects.
+Registered claim types are enforced: `exp`, `iat`, `nbf` are bounded integer
+NumericDates; `aud` is a string or list of strings; `iss`, `sub`, `jti` are strings.
+The validator dictionary requires `issuer` and `audience`; optional fields are
+`type`, `clock_skew` (0–300 seconds) and `now` (test clock). Expiration is required
+and issue times must be in the past when present. The caller applies protocol
+policy for nonce, authorized party and access-token hashes; use the OAuth core
+for those checks. An omitted type policy ignores the type header explicitly.
+
+Failures return `{TINK JWT kind}` errors without token contents. Call
+`::tink::unregister_keyset` when finished. Handles are interpreter-owned, cannot
+be shared between interpreters, use non-recycled names, and are reclaimed when
+their interpreter is deleted. Workers register their own handles from the same
+persistent keysets. Existing signing/verifying commands remain available;
+malformed JWKS imports now return Tcl errors, and public JWKS imports no longer
+attempt to derive a second public handle.
+
+Run the CMake `runtime` and `jwt` tests with the matching Tcl runtime and tjson
+on `TCLLIBPATH`. RSA, EC, HMAC, typed claims, malformed input and key ownership
+are covered.
+
 Tcl bindings for [Tink](https://github.com/tink-crypto/tink-cc), a multi-language, cross-platform library that provides cryptographic APIs that are secure, easy to use correctly, and hard(er) to misuse.
 
 ## Build requirements
